@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'chart_page.dart'; // Import the new chart page
+import 'borrow_page.dart'; // Import the new borrow page
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -245,17 +246,11 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => ChartPage(
-                          items: _items,
-                          totalAmount: _totalAmount,
-                          categories: _categories,
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (context) => BorrowPage()),
                     );
                   },
-                  icon: Icon(Icons.pie_chart),
-                  label: Text('Analysis'),
+                  icon: Icon(Icons.money),
+                  label: Text('Borrow Amount'),
                 ),
               ],
             ),
@@ -278,9 +273,9 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               items: _categories.map((String category) {
                 return DropdownMenuItem<String>(
                   value: category,
-                  child: Text(category),
                   // Make the prompt item disabled or styled differently
                   enabled: category != 'Categories',
+                  child: Text(category),
                 );
               }).toList(),
               onChanged: (String? newValue) {

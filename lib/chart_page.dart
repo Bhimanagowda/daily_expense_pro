@@ -7,6 +7,7 @@ class ChartPage extends StatelessWidget {
   final List<String> categories;
 
   ChartPage({
+    super.key,
     required this.items,
     required this.totalAmount,
     required this.categories,
@@ -83,7 +84,7 @@ class ChartPage extends StatelessWidget {
 
             // If no data, show a message
             if (items.isEmpty)
-              Container(
+              SizedBox(
                 height: 200,
                 child: Center(child: Text('No data to display')),
               )
@@ -118,7 +119,7 @@ class ChartPage extends StatelessWidget {
                   ),
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -159,7 +160,7 @@ class ChartPage extends StatelessWidget {
       }
     });
 
-    return Container(
+    return SizedBox(
       height: 300,
       child: PieChart(
         PieChartData(
