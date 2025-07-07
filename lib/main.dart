@@ -5,6 +5,21 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'chart_page.dart'; // Import the new chart page
+
+const List<String> _categories = [
+  'Categories', // First item as a prompt
+  'Restaurants',
+  'Travel',
+  'Transport',
+  'Groceries',
+  'Vegetables & Fruits',
+  'Personal Care',
+  'Home & Utilities',
+  'Clothing & Accessories',
+  'Entertainment',
+  'Others',
+];
 
 void main() {
   runApp(MyApp());
@@ -42,11 +57,14 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   int _currentIndex = 0;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  String _selectedCategory = _categories[0];
 
   List<Map<String, dynamic>> _items = [];
   double _totalAmount = 0.0;
   final List<int> _selectedIndexes = [];
   bool _isSelectionMode = false;
+
+  final List<Widget> _pages = [];
 
   @override
   void initState() {
@@ -57,6 +75,17 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
       });
     });
     _loadItems();
+
+    // Initialize pages after loading items
+    _pages.add(_buildHomePage());
+    _pages.add(_buildDetailsPage());
+    _pages.add(
+      ChartPage(
+        items: _items,
+        totalAmount: _totalAmount,
+        categories: _categories,
+      ),
+    );
   }
 
   @override
@@ -72,6 +101,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     List<String> itemsJson = _items
         .map(
           (item) => jsonEncode({
+            'category': item['category'],
             'name': item['name'],
             'price': item['price'],
             'time': (item['time'] as DateTime).toIso8601String(),
@@ -90,6 +120,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
       _items = itemsJson.map((itemStr) {
         final item = jsonDecode(itemStr);
         return {
+          'category': item['category'],
           'name': item['name'],
           'price': item['price'],
           'time': DateTime.parse(item['time']),
@@ -103,15 +134,27 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   void _addItem() {
     String name = _nameController.text.trim();
     double? price = double.tryParse(_priceController.text.trim());
-    if (name.isNotEmpty && price != null) {
+
+    // Check if a real category is selected (not the prompt)
+    if (name.isNotEmpty && price != null && _selectedCategory != 'Categories') {
       setState(() {
-        _items.add({'name': name, 'price': price, 'time': DateTime.now()});
+        _items.add({
+          'category': _selectedCategory,
+          'name': name,
+          'price': price,
+          'time': DateTime.now(),
+        });
         _totalAmount += price;
         _nameController.clear();
         _priceController.clear();
         _currentIndex = 1; // Switch to Details tab after adding
       });
       _saveItems(); // Save after adding
+    } else if (_selectedCategory == 'Categories') {
+      // Show error if category not selected
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please select a category')));
     }
   }
 
@@ -121,9 +164,10 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
 
     var excel = Excel.createExcel();
     Sheet sheetObject = excel['Sheet1'];
-    sheetObject.appendRow(['Name', 'DateTime', 'Price']);
+    sheetObject.appendRow(['Category', 'Name', 'DateTime', 'Price']);
     for (var item in _items) {
       sheetObject.appendRow([
+        item['category'],
         item['name'],
         (item['time'] as DateTime).toString().substring(0, 16),
         item['price'].toString(),
@@ -131,10 +175,10 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     }
 
     // Add an empty row for spacing (optional)
-    sheetObject.appendRow(['', '', '']);
+    sheetObject.appendRow(['', '', '', '']);
 
     // Add the total row
-    sheetObject.appendRow(['Total', '', _totalAmount.toStringAsFixed(2)]);
+    sheetObject.appendRow(['', '', 'Total', _totalAmount.toStringAsFixed(2)]);
 
     var fileBytes = excel.encode();
 
@@ -182,33 +226,97 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   Widget _buildHomePage() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Current Date & Time: ${_now.toString().substring(0, 16)}',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 20),
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(
-              labelText: 'Item Name',
-              border: OutlineInputBorder(),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _now.toString().substring(0, 16),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChartPage(
+                          items: _items,
+                          totalAmount: _totalAmount,
+                          categories: _categories,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.pie_chart),
+                  label: Text('Analysis'),
+                ),
+              ],
             ),
-          ),
-          SizedBox(height: 10),
-          TextField(
-            controller: _priceController,
-            decoration: InputDecoration(
-              labelText: 'Item Price',
-              border: OutlineInputBorder(),
+            SizedBox(height: 20),
+
+            // Your existing form elements
+            Text(
+              'Add New Expense',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            keyboardType: TextInputType.number,
-          ),
-          SizedBox(height: 20),
-          ElevatedButton(onPressed: _addItem, child: Text('Add')),
-        ],
+            SizedBox(height: 10),
+
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: 'Category',
+                border: OutlineInputBorder(),
+                hintText: 'Select a category',
+              ),
+              value: _selectedCategory,
+              items: _categories.map((String category) {
+                return DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                  // Make the prompt item disabled or styled differently
+                  enabled: category != 'Categories',
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedCategory = newValue!;
+                });
+              },
+              // Add a validator to ensure a real category is selected
+              validator: (value) {
+                if (value == 'Categories') {
+                  return 'Please select a category';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'Item Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: _priceController,
+              decoration: InputDecoration(
+                labelText: 'Item Price',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(onPressed: _addItem, child: Text('Add')),
+          ],
+        ),
       ),
     );
   }
@@ -281,12 +389,60 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                                 },
                               )
                             : null,
-                        title: Text(item['name']),
-                        subtitle: Text(
-                          'DATETIME: ${time.toString().substring(0, 16)}',
-                          style: TextStyle(fontSize: 12),
+                        title: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${item['category']}: ',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '${item['name']}',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                          ],
                         ),
-                        trailing: Text('₹${item['price'].toStringAsFixed(2)}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 4),
+                            Text(
+                              'DATETIME: ${time.toString().substring(0, 16)}',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            SizedBox(height: 8),
+                          ],
+                        ),
+                        trailing: Container(
+                          margin: EdgeInsets.only(left: 10),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '₹${item['price'].toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              IconButton(
+                                icon: Icon(Icons.edit, size: 20),
+                                onPressed: () => _showUpdateDialog(index),
+                              ),
+                            ],
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -326,15 +482,115 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     );
   }
 
+  void _showUpdateDialog(int index) {
+    final item = _items[index];
+    final TextEditingController nameController = TextEditingController(
+      text: item['name'],
+    );
+    final TextEditingController priceController = TextEditingController(
+      text: item['price'].toString(),
+    );
+    // Use the existing category or default to the first real category (index 1)
+    String selectedCategory = item['category'] ?? _categories[1];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Update Item'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: 'Category',
+                border: OutlineInputBorder(),
+              ),
+              value: selectedCategory,
+              items: _categories.skip(1).map((String category) {
+                // Skip the prompt item
+                return DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                selectedCategory = newValue!;
+              },
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Item Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: priceController,
+              decoration: InputDecoration(
+                labelText: 'Item Price',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              String name = nameController.text.trim();
+              double? price = double.tryParse(priceController.text.trim());
+              if (name.isNotEmpty && price != null) {
+                setState(() {
+                  // Subtract old price from total
+                  _totalAmount -= _items[index]['price'];
+                  // Update the item
+                  _items[index]['name'] = name;
+                  _items[index]['price'] = price;
+                  _items[index]['category'] = selectedCategory;
+                  // Add new price to total
+                  _totalAmount += price;
+                });
+                _saveItems(); // Save after updating
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Refresh pages when data changes
+    _pages[0] = _buildHomePage();
+    _pages[1] = _buildDetailsPage();
+    _pages[2] = ChartPage(
+      items: _items.isNotEmpty ? _items : [], // Ensure we pass a valid list
+      totalAmount: _totalAmount > 0
+          ? _totalAmount
+          : 0.0, // Ensure we pass a valid amount
+      categories: _categories,
+    );
+
     return Scaffold(
       appBar: AppBar(title: Text('Daily Expenditure')),
-      body: _currentIndex == 0 ? _buildHomePage() : _buildDetailsPage(),
+      body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.details), label: 'Details'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.pie_chart),
+            label: 'Analysis',
+          ),
         ],
         currentIndex: _currentIndex,
         selectedItemColor: Colors.blue,
