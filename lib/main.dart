@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'chart_page.dart'; // Import the new chart page
 import 'borrow_page.dart'; // Import the new borrow page
+import 'lend_page.dart'; // Import the new lend page
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -238,19 +239,9 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                   _now.toString().substring(0, 16),
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.bold,
                     color: Colors.grey[700],
                   ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => BorrowPage()),
-                    );
-                  },
-                  icon: Icon(Icons.money),
-                  label: Text('Borrow Amount'),
                 ),
               ],
             ),
@@ -310,6 +301,36 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             ),
             SizedBox(height: 20),
             ElevatedButton(onPressed: _addItem, child: Text('Add')),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LendPage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                minimumSize: Size(double.infinity, 50), // Full width and height
+              ),
+              child: Text('Lend'),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => BorrowPage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                minimumSize: Size(double.infinity, 50), // Full width and height
+              ),
+              child: Text('Borrow'),
+            ),
           ],
         ),
       ),
@@ -576,7 +597,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text('Daily Expenditure')),
+      appBar: AppBar(title: Text('Daily Expenditure-C')),
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[

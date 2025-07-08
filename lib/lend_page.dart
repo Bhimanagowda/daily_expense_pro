@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-class BorrowPage extends StatefulWidget {
-  const BorrowPage({super.key});
+class LendPage extends StatefulWidget {
+  const LendPage({super.key});
 
   @override
-  _BorrowPageState createState() => _BorrowPageState();
+  _LendPageState createState() => _LendPageState();
 }
 
-class _BorrowPageState extends State<BorrowPage> {
+class _LendPageState extends State<LendPage> {
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  List<Map<String, dynamic>> _borrowList = [];
-  double _totalBorrowAmount = 0.0;
+  List<Map<String, dynamic>> _lendList = [];
+  double _totalLendAmount = 0.0;
 
   // Selection mode variables for main list
   bool _isSelectionMode = false;
@@ -25,16 +25,16 @@ class _BorrowPageState extends State<BorrowPage> {
   @override
   void initState() {
     super.initState();
-    _loadBorrowData();
+    _loadLendData();
   }
 
-  Future<void> _loadBorrowData() async {
+  Future<void> _loadLendData() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String>? borrowJson = prefs.getStringList('borrowList');
-    double? total = prefs.getDouble('totalBorrowAmount');
+    List<String>? lendJson = prefs.getStringList('lendList');
+    double? total = prefs.getDouble('totalLendAmount');
 
-    if (borrowJson != null) {
-      _borrowList = borrowJson.map((itemStr) {
+    if (lendJson != null) {
+      _lendList = lendJson.map((itemStr) {
         final item = jsonDecode(itemStr);
         return {
           'firstName': item['firstName'],
@@ -47,13 +47,13 @@ class _BorrowPageState extends State<BorrowPage> {
       }).toList();
     }
 
-    if (total != null) _totalBorrowAmount = total;
+    if (total != null) _totalLendAmount = total;
     setState(() {});
   }
 
-  Future<void> _saveBorrowData() async {
+  Future<void> _saveLendData() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> borrowJson = _borrowList.map((item) {
+    List<String> lendJson = _lendList.map((item) {
       Map<String, dynamic> itemMap = {
         'firstName': item['firstName'],
         'lastName': item['lastName'],
@@ -65,11 +65,11 @@ class _BorrowPageState extends State<BorrowPage> {
       return jsonEncode(itemMap);
     }).toList();
 
-    await prefs.setStringList('borrowList', borrowJson);
-    await prefs.setDouble('totalBorrowAmount', _totalBorrowAmount);
+    await prefs.setStringList('lendList', lendJson);
+    await prefs.setDouble('totalLendAmount', _totalLendAmount);
   }
 
-  void _addBorrowItem() {
+  void _addLendItem() {
     String firstName = _firstNameController.text.trim();
     String lastName = _lastNameController.text.trim();
     String fullName = "$firstName $lastName".trim();
@@ -79,7 +79,7 @@ class _BorrowPageState extends State<BorrowPage> {
     if (firstName.isNotEmpty && amount != null) {
       setState(() {
         // Always add as a new transaction (don't combine)
-        _borrowList.add({
+        _lendList.add({
           'firstName': firstName,
           'lastName': lastName,
           'fullName': fullName,
@@ -88,18 +88,18 @@ class _BorrowPageState extends State<BorrowPage> {
           'time': DateTime.now(),
         });
 
-        _totalBorrowAmount += amount;
+        _totalLendAmount += amount;
         _firstNameController.clear();
         _lastNameController.clear();
         _amountController.clear();
         _descriptionController.clear();
       });
-      _saveBorrowData();
+      _saveLendData();
 
       // Show success popup
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Added $fullName to Borrow list'),
+          content: Text('Added $fullName to Lend list'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
@@ -118,14 +118,14 @@ class _BorrowPageState extends State<BorrowPage> {
 
   void _deleteTransaction(int transactionIndex) {
     setState(() {
-      _totalBorrowAmount -= _borrowList[transactionIndex]['amount'];
-      _borrowList.removeAt(transactionIndex);
+      _totalLendAmount -= _lendList[transactionIndex]['amount'];
+      _lendList.removeAt(transactionIndex);
     });
-    _saveBorrowData();
+    _saveLendData();
   }
 
   void _editTransaction(int transactionIndex) {
-    final item = _borrowList[transactionIndex];
+    final item = _lendList[transactionIndex];
     final TextEditingController firstNameController = TextEditingController(
       text: item['firstName'],
     );
@@ -206,21 +206,21 @@ class _BorrowPageState extends State<BorrowPage> {
               if (firstName.isNotEmpty && amount != null) {
                 setState(() {
                   // Subtract old amount from total
-                  _totalBorrowAmount -= _borrowList[transactionIndex]['amount'];
+                  _totalLendAmount -= _lendList[transactionIndex]['amount'];
                   // Update the transaction
-                  _borrowList[transactionIndex]['firstName'] = firstName;
-                  _borrowList[transactionIndex]['lastName'] = lastName;
-                  _borrowList[transactionIndex]['fullName'] = fullName;
-                  _borrowList[transactionIndex]['amount'] = amount;
-                  _borrowList[transactionIndex]['description'] = description;
+                  _lendList[transactionIndex]['firstName'] = firstName;
+                  _lendList[transactionIndex]['lastName'] = lastName;
+                  _lendList[transactionIndex]['fullName'] = fullName;
+                  _lendList[transactionIndex]['amount'] = amount;
+                  _lendList[transactionIndex]['description'] = description;
                   // Add new amount to total
-                  _totalBorrowAmount += amount;
+                  _totalLendAmount += amount;
                 });
-                _saveBorrowData();
+                _saveLendData();
                 Navigator.pop(context);
                 // Refresh the history dialog
                 Navigator.pop(context);
-                _showBorrowHistory(firstName, lastName);
+                _showLendHistory(firstName, lastName);
               }
             },
             child: Text('Update'),
@@ -233,10 +233,10 @@ class _BorrowPageState extends State<BorrowPage> {
   void _deleteSelectedPersons() {
     setState(() {
       // Remove all transactions for selected persons
-      _borrowList.removeWhere((item) {
+      _lendList.removeWhere((item) {
         String personKey = "${item['firstName']} ${item['lastName']}".trim();
         if (_selectedPersons.contains(personKey)) {
-          _totalBorrowAmount -= item['amount'];
+          _totalLendAmount -= item['amount'];
           return true;
         }
         return false;
@@ -244,12 +244,12 @@ class _BorrowPageState extends State<BorrowPage> {
       _selectedPersons.clear();
       _isSelectionMode = false;
     });
-    _saveBorrowData();
+    _saveLendData();
   }
 
-  void _showBorrowHistory(String firstName, String lastName) {
+  void _showLendHistory(String firstName, String lastName) {
     // Get all transactions for this person
-    List<Map<String, dynamic>> personTransactions = _borrowList
+    List<Map<String, dynamic>> personTransactions = _lendList
         .where(
           (item) =>
               item['firstName'] == firstName && item['lastName'] == lastName,
@@ -272,7 +272,7 @@ class _BorrowPageState extends State<BorrowPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('$fullName - Borrow History'),
+        title: Text('$fullName - Lend History'),
         content: Container(
           width: double.maxFinite,
           height: 400,
@@ -283,7 +283,7 @@ class _BorrowPageState extends State<BorrowPage> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.red,
+                  color: Colors.green,
                 ),
               ),
               SizedBox(height: 10),
@@ -299,8 +299,8 @@ class _BorrowPageState extends State<BorrowPage> {
                           final time = transaction['time'] as DateTime;
                           final description = transaction['description'] ?? '';
 
-                          // Find the original index in _borrowList
-                          int originalIndex = _borrowList.indexWhere(
+                          // Find the original index in _lendList
+                          int originalIndex = _lendList.indexWhere(
                             (item) =>
                                 item['firstName'] == transaction['firstName'] &&
                                 item['lastName'] == transaction['lastName'] &&
@@ -319,12 +319,12 @@ class _BorrowPageState extends State<BorrowPage> {
                                   Row(
                                     children: [
                                       CircleAvatar(
-                                        backgroundColor: Colors.red.shade100,
+                                        backgroundColor: Colors.green.shade100,
                                         radius: 15,
                                         child: Text(
                                           '${index + 1}',
                                           style: TextStyle(
-                                            color: Colors.red,
+                                            color: Colors.green,
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -350,7 +350,7 @@ class _BorrowPageState extends State<BorrowPage> {
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 18,
-                                      color: Colors.red,
+                                      color: Colors.green,
                                     ),
                                   ),
                                   SizedBox(height: 4),
@@ -429,7 +429,7 @@ class _BorrowPageState extends State<BorrowPage> {
                                                     Navigator.pop(
                                                       context,
                                                     ); // Close history dialog
-                                                    _showBorrowHistory(
+                                                    _showLendHistory(
                                                       firstName,
                                                       lastName,
                                                     ); // Refresh history
@@ -468,28 +468,7 @@ class _BorrowPageState extends State<BorrowPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Borrow Section'),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: 'Add Borrow', icon: Icon(Icons.add)),
-              Tab(text: 'Borrow List', icon: Icon(Icons.list)),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [_buildAddBorrowTab(), _buildBorrowListTab()],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddBorrowTab() {
+  Widget _buildAddLendTab() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
@@ -497,7 +476,7 @@ class _BorrowPageState extends State<BorrowPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Add New Borrow',
+              'Add New Lend',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 20),
@@ -537,7 +516,7 @@ class _BorrowPageState extends State<BorrowPage> {
               controller: _amountController,
               keyboardType: TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: 'Borrow Amount',
+                labelText: 'Lend Amount',
                 border: OutlineInputBorder(),
                 hintText: 'Enter amount',
                 prefixText: '₹',
@@ -559,9 +538,9 @@ class _BorrowPageState extends State<BorrowPage> {
             SizedBox(height: 20),
 
             ElevatedButton.icon(
-              onPressed: _addBorrowItem,
+              onPressed: _addLendItem,
               icon: Icon(Icons.add),
-              label: Text('Add Borrow'),
+              label: Text('Add Lend'),
               style: ElevatedButton.styleFrom(
                 minimumSize: Size(double.infinity, 50),
               ),
@@ -572,23 +551,23 @@ class _BorrowPageState extends State<BorrowPage> {
     );
   }
 
-  Widget _buildBorrowListTab() {
+  Widget _buildLendListTab() {
     // Group transactions by person
-    Map<String, List<Map<String, dynamic>>> groupedBorrows = {};
+    Map<String, List<Map<String, dynamic>>> groupedLends = {};
     Map<String, double> personTotals = {};
 
-    for (var item in _borrowList) {
+    for (var item in _lendList) {
       String key = "${item['firstName']} ${item['lastName']}".trim();
-      if (!groupedBorrows.containsKey(key)) {
-        groupedBorrows[key] = [];
+      if (!groupedLends.containsKey(key)) {
+        groupedLends[key] = [];
         personTotals[key] = 0.0;
       }
-      groupedBorrows[key]!.add(item);
+      groupedLends[key]!.add(item);
       personTotals[key] = personTotals[key]! + (item['amount'] ?? 0.0);
     }
 
     // Convert to list for ListView
-    List<String> personNames = groupedBorrows.keys.toList();
+    List<String> personNames = groupedLends.keys.toList();
     personNames.sort(); // Sort alphabetically
 
     return Padding(
@@ -597,26 +576,26 @@ class _BorrowPageState extends State<BorrowPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Total Borrow Amount: ₹${_totalBorrowAmount.toStringAsFixed(2)}',
+            'Total Lend Amount: ₹${_totalLendAmount.toStringAsFixed(2)}',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 20),
 
           Text(
-            'Borrow List (${personNames.length} people)',
+            'Lend List (${personNames.length} people)',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 10),
 
           Expanded(
             child: personNames.isEmpty
-                ? Center(child: Text('No borrow records found.'))
+                ? Center(child: Text('No lend records found.'))
                 : ListView.builder(
                     itemCount: personNames.length,
                     itemBuilder: (context, index) {
                       String personName = personNames[index];
                       List<Map<String, dynamic>> personTransactions =
-                          groupedBorrows[personName]!;
+                          groupedLends[personName]!;
                       double totalAmount = personTotals[personName]!;
 
                       // Get the most recent transaction for display
@@ -659,7 +638,7 @@ class _BorrowPageState extends State<BorrowPage> {
                                     }
                                   });
                                 }
-                              : () => _showBorrowHistory(firstName, lastName),
+                              : () => _showLendHistory(firstName, lastName),
                           leading: _isSelectionMode
                               ? Checkbox(
                                   value: isSelected,
@@ -696,14 +675,14 @@ class _BorrowPageState extends State<BorrowPage> {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.shade100,
+                                      color: Colors.green.shade100,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
                                       '${personTransactions.length} transactions',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.blue.shade700,
+                                        color: Colors.green.shade700,
                                       ),
                                     ),
                                   ),
@@ -724,7 +703,7 @@ class _BorrowPageState extends State<BorrowPage> {
                                 'Tap to view full history',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.blue,
+                                  color: Colors.green,
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
@@ -735,7 +714,7 @@ class _BorrowPageState extends State<BorrowPage> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Colors.red,
+                              color: Colors.green,
                             ),
                           ),
                         ),
@@ -784,6 +763,25 @@ class _BorrowPageState extends State<BorrowPage> {
               ],
             ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Lend Management'),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'Add Lend', icon: Icon(Icons.add)),
+              Tab(text: 'Lend List', icon: Icon(Icons.list)),
+            ],
+          ),
+        ),
+        body: TabBarView(children: [_buildAddLendTab(), _buildLendListTab()]),
       ),
     );
   }
