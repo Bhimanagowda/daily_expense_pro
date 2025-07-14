@@ -12,7 +12,6 @@ import 'lend_page.dart'; // Import the new lend page
 const List<String> _categories = [
   'Categories', // First item as a prompt
   'Restaurants',
-  'Travel',
   'Transport',
   'Groceries',
   'Vegetables & Fruits',
@@ -161,26 +160,46 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   }
 
   Future<void> _downloadExcel() async {
+    // First ask for date range
+    DateTimeRange? dateRange = await _askDateRange(context);
+    if (dateRange == null) return; // User cancelled
+
+    // Then ask for filename
     String? fileName = await _askFileName(context);
     if (fileName == null || fileName.isEmpty) return;
+
+    // Filter items based on date range
+    List<Map<String, dynamic>> filteredItems = _items.where((item) {
+      DateTime itemDate = item['time'] as DateTime;
+      return itemDate.isAfter(dateRange.start) &&
+          itemDate.isBefore(dateRange.end.add(Duration(days: 1)));
+    }).toList();
 
     var excel = Excel.createExcel();
     Sheet sheetObject = excel['Sheet1'];
     sheetObject.appendRow(['Category', 'Name', 'DateTime', 'Price']);
-    for (var item in _items) {
+
+    double totalFilteredAmount = 0;
+    for (var item in filteredItems) {
       sheetObject.appendRow([
         item['category'],
         item['name'],
         (item['time'] as DateTime).toString().substring(0, 16),
         item['price'].toString(),
       ]);
+      totalFilteredAmount += item['price'];
     }
 
-    // Add an empty row for spacing (optional)
+    // Add an empty row for spacing
     sheetObject.appendRow(['', '', '', '']);
 
     // Add the total row
-    sheetObject.appendRow(['', '', 'Total', _totalAmount.toStringAsFixed(2)]);
+    sheetObject.appendRow([
+      '',
+      '',
+      'Total',
+      totalFilteredAmount.toStringAsFixed(2),
+    ]);
 
     var fileBytes = excel.encode();
 
@@ -225,6 +244,212 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     );
   }
 
+  Future<DateTimeRange?> _askDateRange(BuildContext context) async {
+    return showDialog<DateTimeRange>(
+      context: context,
+      builder: (context) {
+        String selectedOption = 'Today';
+        DateTime now = DateTime.now();
+        DateTime startDate = DateTime(now.year, now.month, now.day);
+        DateTime endDate = now;
+
+        // For custom date range
+        DateTime? customStartDate;
+        DateTime? customEndDate;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Select Date Range'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedOption,
+                      items:
+                          [
+                            'Today',
+                            'Yesterday',
+                            'Last 7 days',
+                            'Last 30 days',
+                            'This month',
+                            'Last month',
+                            'Custom range',
+                          ].map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          selectedOption = newValue!;
+
+                          // Calculate date range based on selection
+                          switch (selectedOption) {
+                            case 'Today':
+                              startDate = DateTime(
+                                now.year,
+                                now.month,
+                                now.day,
+                              );
+                              endDate = now;
+                              break;
+                            case 'Yesterday':
+                              startDate = DateTime(
+                                now.year,
+                                now.month,
+                                now.day - 1,
+                              );
+                              endDate = DateTime(
+                                now.year,
+                                now.month,
+                                now.day - 1,
+                                23,
+                                59,
+                                59,
+                              );
+                              break;
+                            case 'Last 7 days':
+                              startDate = DateTime(
+                                now.year,
+                                now.month,
+                                now.day - 6,
+                              );
+                              endDate = now;
+                              break;
+                            case 'Last 30 days':
+                              startDate = DateTime(
+                                now.year,
+                                now.month,
+                                now.day - 29,
+                              );
+                              endDate = now;
+                              break;
+                            case 'This month':
+                              startDate = DateTime(now.year, now.month, 1);
+                              endDate = now;
+                              break;
+                            case 'Last month':
+                              final lastMonth = now.month > 1
+                                  ? DateTime(now.year, now.month - 1)
+                                  : DateTime(now.year - 1, 12);
+                              startDate = DateTime(
+                                lastMonth.year,
+                                lastMonth.month,
+                                1,
+                              );
+                              endDate = DateTime(
+                                now.year,
+                                now.month,
+                                0,
+                                23,
+                                59,
+                                59,
+                              );
+                              break;
+                          }
+                        });
+                      },
+                    ),
+
+                    if (selectedOption == 'Custom range')
+                      Column(
+                        children: [
+                          SizedBox(height: 16),
+                          Text('From date:'),
+                          OutlinedButton(
+                            child: Text(
+                              customStartDate == null
+                                  ? 'Select start date'
+                                  : '${customStartDate!.day}/${customStartDate!.month}/${customStartDate!.year}',
+                            ),
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: customStartDate ?? now,
+                                firstDate: DateTime(2020),
+                                lastDate: now,
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  customStartDate = picked;
+                                  startDate = picked;
+                                });
+                              }
+                            },
+                          ),
+
+                          SizedBox(height: 8),
+                          Text('To date:'),
+                          OutlinedButton(
+                            child: Text(
+                              customEndDate == null
+                                  ? 'Select end date'
+                                  : '${customEndDate!.day}/${customEndDate!.month}/${customEndDate!.year}',
+                            ),
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: customEndDate ?? now,
+                                firstDate: customStartDate ?? DateTime(2020),
+                                lastDate: now,
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  customEndDate = DateTime(
+                                    picked.year,
+                                    picked.month,
+                                    picked.day,
+                                    23,
+                                    59,
+                                    59,
+                                  );
+                                  endDate = customEndDate!;
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (selectedOption == 'Custom range' &&
+                        (customStartDate == null || customEndDate == null)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Please select both start and end dates',
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.pop(
+                        context,
+                        DateTimeRange(start: startDate, end: endDate),
+                      );
+                    }
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildHomePage() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -236,7 +461,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _now.toString().substring(0, 16),
+                  _formatDateTime(_now),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -300,8 +525,35 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               keyboardType: TextInputType.number,
             ),
             SizedBox(height: 20),
-            ElevatedButton(onPressed: _addItem, child: Text('Add')),
-            SizedBox(height: 10),
+
+            // Make Add button bigger
+            ElevatedButton(
+              onPressed: _addItem,
+              child: Text(
+                'Add',
+                style: TextStyle(
+                  fontSize: 18, // Larger text
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(double.infinity, 60), // Taller button
+                padding: EdgeInsets.symmetric(vertical: 15), // More padding
+                side: BorderSide(
+                  width: 1.0,
+                  color: Colors.blue.shade300,
+                ), // Add thin border
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    8.0,
+                  ), // Optional: slightly rounded corners
+                ),
+              ),
+            ),
+
+            // Add a larger gap between Add and Lend buttons
+            SizedBox(height: 60), // Increased from 10 to 30
+
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -353,7 +605,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               ElevatedButton.icon(
                 onPressed: _items.isEmpty ? null : _downloadExcel,
                 icon: Icon(Icons.download),
-                label: Text('Download'),
+                label: Text('Download with Date Range'),
               ),
             ],
           ),
@@ -433,7 +685,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                           children: [
                             SizedBox(height: 4),
                             Text(
-                              'DATETIME: ${time.toString().substring(0, 16)}',
+                              'DATETIME: ${_formatDateTime(time)}',
                               style: TextStyle(fontSize: 12),
                             ),
                             SizedBox(height: 8),
@@ -617,5 +869,27 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
         },
       ),
     );
+  }
+
+  // Add this helper method to format the date time with seconds and AM/PM
+  String _formatDateTime(DateTime dateTime) {
+    // Format: "YYYY-MM-DD hh:mm:ss AM/PM"
+    String year = dateTime.year.toString();
+    String month = dateTime.month.toString().padLeft(2, '0');
+    String day = dateTime.day.toString().padLeft(2, '0');
+
+    String hour =
+        (dateTime.hour > 12
+                ? dateTime.hour - 12
+                : dateTime.hour == 0
+                ? 12
+                : dateTime.hour)
+            .toString()
+            .padLeft(2, '0');
+    String minute = dateTime.minute.toString().padLeft(2, '0');
+    String second = dateTime.second.toString().padLeft(2, '0');
+    String period = dateTime.hour >= 12 ? 'PM' : 'AM';
+
+    return "$year-$month-$day $hour:$minute:$second $period";
   }
 }

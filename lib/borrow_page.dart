@@ -11,7 +11,6 @@ class BorrowPage extends StatefulWidget {
 
 class _BorrowPageState extends State<BorrowPage> {
   final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -38,8 +37,9 @@ class _BorrowPageState extends State<BorrowPage> {
         final item = jsonDecode(itemStr);
         return {
           'firstName': item['firstName'],
-          'lastName': item['lastName'],
           'fullName': item['fullName'],
+          'firstNameLower':
+              item['firstNameLower'] ?? item['firstName'].toLowerCase(),
           'amount': item['amount'],
           'description': item['description'],
           'time': DateTime.parse(item['time']),
@@ -56,8 +56,9 @@ class _BorrowPageState extends State<BorrowPage> {
     List<String> borrowJson = _borrowList.map((item) {
       Map<String, dynamic> itemMap = {
         'firstName': item['firstName'],
-        'lastName': item['lastName'],
-        'fullName': item['fullName'],
+        'fullName': item['firstName'],
+        'firstNameLower':
+            item['firstNameLower'] ?? item['firstName'].toLowerCase(),
         'amount': item['amount'],
         'description': item['description'],
         'time': (item['time'] as DateTime).toIso8601String(),
@@ -71,18 +72,16 @@ class _BorrowPageState extends State<BorrowPage> {
 
   void _addBorrowItem() {
     String firstName = _firstNameController.text.trim();
-    String lastName = _lastNameController.text.trim();
-    String fullName = "$firstName $lastName".trim();
     double? amount = double.tryParse(_amountController.text.trim());
     String description = _descriptionController.text.trim();
 
     if (firstName.isNotEmpty && amount != null) {
       setState(() {
-        // Always add as a new transaction (don't combine)
+        // Store names in lowercase for case-insensitive comparison
         _borrowList.add({
           'firstName': firstName,
-          'lastName': lastName,
-          'fullName': fullName,
+          'fullName': firstName, // Use firstName as fullName
+          'firstNameLower': firstName.toLowerCase(),
           'amount': amount,
           'description': description,
           'time': DateTime.now(),
@@ -90,7 +89,6 @@ class _BorrowPageState extends State<BorrowPage> {
 
         _totalBorrowAmount += amount;
         _firstNameController.clear();
-        _lastNameController.clear();
         _amountController.clear();
         _descriptionController.clear();
       });
@@ -99,7 +97,7 @@ class _BorrowPageState extends State<BorrowPage> {
       // Show success popup
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Added $fullName to Borrow list'),
+          content: Text('Added $firstName to Borrow list'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
@@ -108,7 +106,7 @@ class _BorrowPageState extends State<BorrowPage> {
       // Show error popup if fields are empty
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please enter first name and amount'),
+          content: Text('Please enter name and amount'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
         ),
@@ -122,15 +120,21 @@ class _BorrowPageState extends State<BorrowPage> {
       _borrowList.removeAt(transactionIndex);
     });
     _saveBorrowData();
+
+    // Replace yellow/black warning with a simple green confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Transaction deleted successfully'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   void _editTransaction(int transactionIndex) {
     final item = _borrowList[transactionIndex];
     final TextEditingController firstNameController = TextEditingController(
       text: item['firstName'],
-    );
-    final TextEditingController lastNameController = TextEditingController(
-      text: item['lastName'],
     );
     final TextEditingController amountController = TextEditingController(
       text: item['amount'].toString(),
@@ -146,28 +150,12 @@ class _BorrowPageState extends State<BorrowPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: firstNameController,
-                    decoration: InputDecoration(
-                      labelText: 'First Name',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: lastNameController,
-                    decoration: InputDecoration(
-                      labelText: 'Last Name',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
+            TextField(
+              controller: firstNameController,
+              decoration: InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(),
+              ),
             ),
             SizedBox(height: 10),
             TextField(
@@ -198,8 +186,6 @@ class _BorrowPageState extends State<BorrowPage> {
           ElevatedButton(
             onPressed: () {
               String firstName = firstNameController.text.trim();
-              String lastName = lastNameController.text.trim();
-              String fullName = "$firstName $lastName".trim();
               double? amount = double.tryParse(amountController.text.trim());
               String description = descriptionController.text.trim();
 
@@ -209,8 +195,9 @@ class _BorrowPageState extends State<BorrowPage> {
                   _totalBorrowAmount -= _borrowList[transactionIndex]['amount'];
                   // Update the transaction
                   _borrowList[transactionIndex]['firstName'] = firstName;
-                  _borrowList[transactionIndex]['lastName'] = lastName;
-                  _borrowList[transactionIndex]['fullName'] = fullName;
+                  _borrowList[transactionIndex]['fullName'] = firstName;
+                  _borrowList[transactionIndex]['firstNameLower'] = firstName
+                      .toLowerCase();
                   _borrowList[transactionIndex]['amount'] = amount;
                   _borrowList[transactionIndex]['description'] = description;
                   // Add new amount to total
@@ -220,7 +207,7 @@ class _BorrowPageState extends State<BorrowPage> {
                 Navigator.pop(context);
                 // Refresh the history dialog
                 Navigator.pop(context);
-                _showBorrowHistory(firstName, lastName);
+                _showBorrowHistory(firstName);
               }
             },
             child: Text('Update'),
@@ -231,30 +218,89 @@ class _BorrowPageState extends State<BorrowPage> {
   }
 
   void _deleteSelectedPersons() {
-    setState(() {
-      // Remove all transactions for selected persons
-      _borrowList.removeWhere((item) {
-        String personKey = "${item['firstName']} ${item['lastName']}".trim();
-        if (_selectedPersons.contains(personKey)) {
-          _totalBorrowAmount -= item['amount'];
-          return true;
+    // Create a copy of the selected persons for the confirmation message
+    List<String> selectedPersonsCopy = List.from(_selectedPersons);
+
+    // Convert to lowercase for case-insensitive comparison
+    List<String> selectedPersonsLower = selectedPersonsCopy
+        .map((name) => name.toLowerCase())
+        .toList();
+
+    // Count how many transactions will be deleted
+    int transactionsToDelete = 0;
+    double amountToSubtract = 0.0;
+
+    // First calculate what will be deleted
+    for (var item in _borrowList) {
+      String personKey = (item['fullName']?.toString().trim() ?? '')
+          .toLowerCase();
+      if (selectedPersonsLower.contains(personKey)) {
+        transactionsToDelete++;
+        amountToSubtract += (item['amount'] is num) ? item['amount'] : 0.0;
+      }
+    }
+
+    if (transactionsToDelete > 0) {
+      setState(() {
+        // Create a new list without the selected persons
+        List<Map<String, dynamic>> newBorrowList = [];
+
+        for (var item in _borrowList) {
+          String personKey = (item['fullName']?.toString().trim() ?? '')
+              .toLowerCase();
+          if (!selectedPersonsLower.contains(personKey)) {
+            newBorrowList.add(item);
+          }
         }
-        return false;
+
+        // Replace the old list with the new one
+        _borrowList = newBorrowList;
+
+        // Update the total amount
+        _totalBorrowAmount -= amountToSubtract;
+        if (_totalBorrowAmount < 0) {
+          _totalBorrowAmount = 0; // Prevent negative totals
+        }
+
+        // Clear selection mode
+        _selectedPersons.clear();
+        _isSelectionMode = false;
       });
-      _selectedPersons.clear();
-      _isSelectionMode = false;
-    });
-    _saveBorrowData();
+
+      // Save the updated data
+      _saveBorrowData();
+
+      // Show confirmation with green background instead of yellow/black
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Deleted $transactionsToDelete transactions for ${selectedPersonsCopy.length} people',
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      // Show message with green background instead of orange/black
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No transactions found for the selected people'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
-  void _showBorrowHistory(String firstName, String lastName) {
-    // Get all transactions for this person
-    List<Map<String, dynamic>> personTransactions = _borrowList
-        .where(
-          (item) =>
-              item['firstName'] == firstName && item['lastName'] == lastName,
-        )
-        .toList();
+  void _showBorrowHistory(String name) {
+    // Convert input name to lowercase for case-insensitive comparison
+    String nameLower = name.toLowerCase();
+
+    // Get all transactions for this person (case-insensitive)
+    List<Map<String, dynamic>> personTransactions = _borrowList.where((item) {
+      String itemName = (item['firstName'] ?? '').toString().toLowerCase();
+      return itemName == nameLower;
+    }).toList();
 
     // Sort by time (newest first)
     personTransactions.sort(
@@ -264,208 +310,121 @@ class _BorrowPageState extends State<BorrowPage> {
     // Calculate total amount for this person
     double totalPersonAmount = personTransactions.fold(
       0.0,
-      (sum, item) => sum + (item['amount'] ?? 0.0),
+      (sum, item) => sum + ((item['amount'] is num) ? item['amount'] : 0.0),
     );
 
-    String fullName = "$firstName $lastName".trim();
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('$fullName - Borrow History'),
-        content: Container(
-          width: double.maxFinite,
-          height: 400,
-          child: Column(
-            children: [
-              Text(
-                'Total Amount: ₹${totalPersonAmount.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-              SizedBox(height: 10),
-              Divider(),
-              SizedBox(height: 10),
-              Expanded(
-                child: personTransactions.isEmpty
-                    ? Center(child: Text('No transactions found'))
-                    : ListView.builder(
-                        itemCount: personTransactions.length,
-                        itemBuilder: (context, index) {
-                          final transaction = personTransactions[index];
-                          final time = transaction['time'] as DateTime;
-                          final description = transaction['description'] ?? '';
-
-                          // Find the original index in _borrowList
-                          int originalIndex = _borrowList.indexWhere(
-                            (item) =>
-                                item['firstName'] == transaction['firstName'] &&
-                                item['lastName'] == transaction['lastName'] &&
-                                item['time'] == transaction['time'] &&
-                                item['amount'] == transaction['amount'],
-                          );
-
-                          return Card(
-                            margin: EdgeInsets.only(bottom: 8),
-                            child: Padding(
-                              padding: EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Line 1: Transaction number and name
-                                  Row(
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: Colors.red.shade100,
-                                        radius: 15,
-                                        child: Text(
-                                          '${index + 1}',
-                                          style: TextStyle(
-                                            color: Colors.red,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          '${transaction['firstName']} ${transaction['lastName']}',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 8),
-
-                                  // Line 2: Amount
-                                  Text(
-                                    '₹${transaction['amount'].toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-
-                                  // Description and date
-                                  if (description.isNotEmpty) ...[
-                                    Text(
-                                      description,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    SizedBox(height: 4),
-                                  ],
-                                  Text(
-                                    'Date: ${time.toString().substring(0, 16)}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[500],
-                                    ),
-                                  ),
-                                  SizedBox(height: 8),
-
-                                  // Line 3: Edit and Delete buttons
-                                  Row(
-                                    children: [
-                                      ElevatedButton.icon(
-                                        icon: Icon(Icons.edit, size: 16),
-                                        label: Text('Edit'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue,
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                        ),
-                                        onPressed: () =>
-                                            _editTransaction(originalIndex),
-                                      ),
-                                      SizedBox(width: 10),
-                                      ElevatedButton.icon(
-                                        icon: Icon(Icons.delete, size: 16),
-                                        label: Text('Delete'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.red,
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                        ),
-                                        onPressed: () {
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: Text('Delete Transaction'),
-                                              content: Text(
-                                                'Are you sure you want to delete this transaction?',
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: Text('Cancel'),
-                                                ),
-                                                ElevatedButton(
-                                                  onPressed: () {
-                                                    _deleteTransaction(
-                                                      originalIndex,
-                                                    );
-                                                    Navigator.pop(
-                                                      context,
-                                                    ); // Close confirmation dialog
-                                                    Navigator.pop(
-                                                      context,
-                                                    ); // Close history dialog
-                                                    _showBorrowHistory(
-                                                      firstName,
-                                                      lastName,
-                                                    ); // Refresh history
-                                                  },
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                        backgroundColor:
-                                                            Colors.red,
-                                                      ),
-                                                  child: Text('Delete'),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
-          ),
-        ],
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Total: ₹${totalPersonAmount.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Divider(),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: personTransactions.length,
+                    itemBuilder: (context, index) {
+                      final transaction = personTransactions[index];
+                      return ListTile(
+                        title: Text(
+                          '₹${transaction['amount'].toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _formatDateTime(transaction['time'] as DateTime),
+                            ),
+                            if (transaction['description'] != null &&
+                                transaction['description']
+                                    .toString()
+                                    .isNotEmpty)
+                              Text(
+                                transaction['description'].toString(),
+                                style: TextStyle(fontStyle: FontStyle.italic),
+                              ),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _editTransaction(
+                                  _borrowList.indexOf(transaction),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showDeleteConfirmation(
+                                  _borrowList.indexOf(transaction),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+  }
+
+  void _showPersonDetails(int index) {
+    final item = _borrowList[index];
+
+    // Create a fullName from the item
+    String fullName = "${item['firstName']} ${item['lastName']}".trim();
+
+    // Call _showBorrowHistory with a single parameter
+    _showBorrowHistory(fullName);
   }
 
   @override
@@ -490,299 +449,344 @@ class _BorrowPageState extends State<BorrowPage> {
   }
 
   Widget _buildAddBorrowTab() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Add New Borrow',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 20),
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Add New Borrow',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
 
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _firstNameController,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    decoration: InputDecoration(
-                      labelText: 'First Name',
-                      border: OutlineInputBorder(),
-                      hintText: 'Enter first name',
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _lastNameController,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    decoration: InputDecoration(
-                      labelText: 'Last Name',
-                      border: OutlineInputBorder(),
-                      hintText: 'Enter last name (optional)',
-                    ),
-                  ),
-                ),
-              ],
+          TextField(
+            controller: _firstNameController,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+              labelText: 'Name',
+              border: OutlineInputBorder(),
+              hintText: 'Enter name',
             ),
-            SizedBox(height: 10),
+          ),
+          SizedBox(height: 10),
 
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Borrow Amount',
-                border: OutlineInputBorder(),
-                hintText: 'Enter amount',
-                prefixText: '₹',
-              ),
+          TextField(
+            controller: _amountController,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Borrow Amount',
+              border: OutlineInputBorder(),
+              hintText: 'Enter amount',
+              prefixText: '₹',
             ),
-            SizedBox(height: 10),
+          ),
+          SizedBox(height: 10),
 
-            TextField(
-              controller: _descriptionController,
-              maxLines: 3,
-              autocorrect: false,
-              enableSuggestions: false,
-              decoration: InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-                hintText: 'Enter description (optional)',
-              ),
+          TextField(
+            controller: _descriptionController,
+            maxLines: 3,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+              labelText: 'Description',
+              border: OutlineInputBorder(),
+              hintText: 'Enter description (optional)',
             ),
-            SizedBox(height: 20),
+          ),
+          SizedBox(height: 20),
 
-            ElevatedButton.icon(
-              onPressed: _addBorrowItem,
-              icon: Icon(Icons.add),
-              label: Text('Add Borrow'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 50),
-              ),
+          ElevatedButton.icon(
+            onPressed: _addBorrowItem,
+            icon: Icon(Icons.add),
+            label: Text('Add Borrow'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: Size(double.infinity, 50),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildBorrowListTab() {
-    // Group transactions by person
+    // Group transactions by person (case-insensitive)
     Map<String, List<Map<String, dynamic>>> groupedBorrows = {};
     Map<String, double> personTotals = {};
+    Map<String, String> displayNames =
+        {}; // To preserve original case for display
 
     for (var item in _borrowList) {
-      String key = "${item['firstName']} ${item['lastName']}".trim();
-      if (!groupedBorrows.containsKey(key)) {
-        groupedBorrows[key] = [];
-        personTotals[key] = 0.0;
+      // Use lowercase fullName as key for case-insensitive grouping
+      String fullName = (item['fullName'] ?? '').toString().trim();
+      String lowerKey = fullName.toLowerCase();
+
+      if (!groupedBorrows.containsKey(lowerKey)) {
+        groupedBorrows[lowerKey] = [];
+        personTotals[lowerKey] = 0.0;
+        displayNames[lowerKey] = fullName; // Store original case for display
       }
-      groupedBorrows[key]!.add(item);
-      personTotals[key] = personTotals[key]! + (item['amount'] ?? 0.0);
+
+      groupedBorrows[lowerKey]!.add(item);
+      personTotals[lowerKey] =
+          personTotals[lowerKey]! +
+          ((item['amount'] is num) ? item['amount'] : 0.0);
     }
 
     // Convert to list for ListView
-    List<String> personNames = groupedBorrows.keys.toList();
-    personNames.sort(); // Sort alphabetically
+    List<String> personKeys = groupedBorrows.keys.toList();
+    personKeys.sort(); // Sort alphabetically
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Total Borrow Amount: ₹${_totalBorrowAmount.toStringAsFixed(2)}',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Wrap this Text widget with Expanded to prevent overflow
+              Expanded(
+                child: Text(
+                  'Total Borrow: ₹${_totalBorrowAmount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                  overflow:
+                      TextOverflow.ellipsis, // Handle text overflow gracefully
+                ),
+              ),
+              if (_isSelectionMode)
+                // Add some spacing between the text and button
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: ElevatedButton.icon(
+                    icon: Icon(Icons.cancel, size: 16), // Make icon smaller
+                    label: Text(
+                      'Cancel',
+                      style: TextStyle(fontSize: 12),
+                    ), // Make text smaller
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ), // Smaller padding
+                      minimumSize: Size(0, 32), // Smaller minimum size
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isSelectionMode = false;
+                        _selectedPersons.clear();
+                      });
+                    },
+                  ),
+                ),
+            ],
           ),
-          SizedBox(height: 20),
+        ),
+        Divider(),
+        Expanded(
+          child: personKeys.isEmpty
+              ? Center(child: Text('No borrow records found.'))
+              : ListView.builder(
+                  itemCount: personKeys.length,
+                  itemBuilder: (context, index) {
+                    String personKey = personKeys[index];
+                    String displayName = displayNames[personKey] ?? personKey;
+                    List<Map<String, dynamic>> personTransactions =
+                        groupedBorrows[personKey]!;
+                    double totalAmount = personTotals[personKey]!;
 
-          Text(
-            'Borrow List (${personNames.length} people)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 10),
+                    // Get the most recent transaction for display
+                    Map<String, dynamic> latestTransaction = personTransactions
+                        .reduce(
+                          (a, b) =>
+                              (a['time'] as DateTime).isAfter(
+                                b['time'] as DateTime,
+                              )
+                              ? a
+                              : b,
+                        );
 
-          Expanded(
-            child: personNames.isEmpty
-                ? Center(child: Text('No borrow records found.'))
-                : ListView.builder(
-                    itemCount: personNames.length,
-                    itemBuilder: (context, index) {
-                      String personName = personNames[index];
-                      List<Map<String, dynamic>> personTransactions =
-                          groupedBorrows[personName]!;
-                      double totalAmount = personTotals[personName]!;
+                    DateTime latestTime = latestTransaction['time'] as DateTime;
 
-                      // Get the most recent transaction for display
-                      Map<String, dynamic> latestTransaction =
-                          personTransactions.reduce(
-                            (a, b) =>
-                                (a['time'] as DateTime).isAfter(
-                                  b['time'] as DateTime,
-                                )
-                                ? a
-                                : b,
-                          );
+                    bool isSelected = _selectedPersons
+                        .map((name) => name.toLowerCase())
+                        .contains(personKey);
 
-                      String firstName = latestTransaction['firstName'];
-                      String lastName = latestTransaction['lastName'];
-                      DateTime latestTime =
-                          latestTransaction['time'] as DateTime;
-
-                      bool isSelected = _selectedPersons.contains(personName);
-
-                      return Card(
-                        margin: EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          onLongPress: () {
-                            setState(() {
-                              _isSelectionMode = true;
-                              _selectedPersons.add(personName);
-                            });
-                          },
-                          onTap: _isSelectionMode
-                              ? () {
+                    return Card(
+                      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      elevation: isSelected ? 4 : 1,
+                      color: isSelected ? Colors.blue.shade50 : null,
+                      child: ListTile(
+                        onLongPress: () {
+                          setState(() {
+                            _isSelectionMode = true;
+                            _selectedPersons.add(personKey);
+                          });
+                        },
+                        onTap: _isSelectionMode
+                            ? () {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedPersons.removeWhere(
+                                      (name) => name.toLowerCase() == personKey,
+                                    );
+                                    if (_selectedPersons.isEmpty) {
+                                      _isSelectionMode = false;
+                                    }
+                                  } else {
+                                    _selectedPersons.add(personKey);
+                                  }
+                                });
+                              }
+                            : () => _showBorrowHistory(displayName),
+                        leading: _isSelectionMode
+                            ? Checkbox(
+                                value: isSelected,
+                                onChanged: (checked) {
                                   setState(() {
-                                    if (isSelected) {
-                                      _selectedPersons.remove(personName);
+                                    if (checked == true) {
+                                      _selectedPersons.add(personKey);
+                                    } else {
+                                      _selectedPersons.removeWhere(
+                                        (name) =>
+                                            name.toLowerCase() == personKey,
+                                      );
                                       if (_selectedPersons.isEmpty) {
                                         _isSelectionMode = false;
                                       }
-                                    } else {
-                                      _selectedPersons.add(personName);
                                     }
                                   });
-                                }
-                              : () => _showBorrowHistory(firstName, lastName),
-                          leading: _isSelectionMode
-                              ? Checkbox(
-                                  value: isSelected,
-                                  onChanged: (checked) {
-                                    setState(() {
-                                      if (checked == true) {
-                                        _selectedPersons.add(personName);
-                                      } else {
-                                        _selectedPersons.remove(personName);
-                                        if (_selectedPersons.isEmpty) {
-                                          _isSelectionMode = false;
-                                        }
-                                      }
-                                    });
-                                  },
-                                )
-                              : null,
-                          title: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      personName,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.shade100,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      '${personTransactions.length} transactions',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.blue.shade700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 4),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Last transaction: ${latestTime.toString().substring(0, 16)}',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Tap to view full history',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.blue,
-                                  fontStyle: FontStyle.italic,
+                                },
+                              )
+                            : CircleAvatar(
+                                child: Text(
+                                  displayName.isNotEmpty
+                                      ? displayName[0].toUpperCase()
+                                      : '?',
                                 ),
                               ),
-                            ],
-                          ),
-                          trailing: Text(
-                            '₹${totalAmount.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.red,
-                            ),
-                          ),
+                        title: Text(
+                          displayName,
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                      );
-                    },
-                  ),
-          ),
-          SizedBox(height: 10),
-          if (_isSelectionMode)
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  icon: Icon(Icons.delete),
-                  label: Text('Delete Selected People'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 174, 158, 156),
-                  ),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text('Delete Selected People'),
-                        content: Text(
-                          'Are you sure you want to delete all transactions for ${_selectedPersons.length} selected people?',
+                        subtitle: Text(
+                          'Last Borrow: ${_formatDateTime(latestTime)}',
+                          style: TextStyle(fontSize: 12),
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              _deleteSelectedPersons();
-                              Navigator.pop(context);
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '₹${totalAmount.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.red,
+                              ),
                             ),
-                            child: Text('Delete All'),
-                          ),
-                        ],
+                            Text(
+                              '${personTransactions.length} transaction${personTransactions.length != 1 ? 's' : ''}',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
                 ),
-              ],
+        ),
+        if (_isSelectionMode)
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.delete),
+              label: Text('Delete Selected (${_selectedPersons.length})'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                minimumSize: Size(double.infinity, 50),
+              ),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Delete Selected People'),
+                    content: Text(
+                      'Are you sure you want to delete all transactions for ${_selectedPersons.length} selected people?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _deleteSelectedPersons();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: Text('Delete All'),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
+          ),
+      ],
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    // Format: "YYYY-MM-DD hh:mm:ss AM/PM"
+    String year = dateTime.year.toString();
+    String month = dateTime.month.toString().padLeft(2, '0');
+    String day = dateTime.day.toString().padLeft(2, '0');
+
+    String hour =
+        (dateTime.hour > 12
+                ? dateTime.hour - 12
+                : dateTime.hour == 0
+                ? 12
+                : dateTime.hour)
+            .toString()
+            .padLeft(2, '0');
+    String minute = dateTime.minute.toString().padLeft(2, '0');
+    String second = dateTime.second.toString().padLeft(2, '0');
+    String period = dateTime.hour >= 12 ? 'PM' : 'AM';
+
+    return "$year-$month-$day $hour:$minute:$second $period";
+  }
+
+  // Update the delete confirmation dialog
+  void _showDeleteConfirmation(int transactionIndex) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Transaction'),
+        content: Text('Are you sure you want to delete this transaction?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteTransaction(transactionIndex);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green, // Changed from red to green
+            ),
+            child: Text('Delete'),
+          ),
         ],
       ),
     );
