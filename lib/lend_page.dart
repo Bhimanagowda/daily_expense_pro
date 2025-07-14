@@ -43,6 +43,9 @@ class _LendPageState extends State<LendPage> {
           'amount': item['amount'],
           'description': item['description'],
           'time': DateTime.parse(item['time']),
+          'type':
+              item['type'] ??
+              'lend', // Default to 'lend' for backward compatibility
         };
       }).toList();
     }
@@ -62,6 +65,7 @@ class _LendPageState extends State<LendPage> {
         'amount': item['amount'],
         'description': item['description'],
         'time': (item['time'] as DateTime).toIso8601String(),
+        'type': item['type'] ?? 'lend', // Include type in saved data
       };
       return jsonEncode(itemMap);
     }).toList();
@@ -115,8 +119,14 @@ class _LendPageState extends State<LendPage> {
   }
 
   void _deleteTransaction(int transactionIndex) {
+    final item = _lendList[transactionIndex];
+    final bool isReturn = item['type'] == 'return';
+    final double amount = item['amount'];
+
     setState(() {
-      _totalLendAmount -= _lendList[transactionIndex]['amount'];
+      // For return transactions, we need to add the negative amount back
+      _totalLendAmount -=
+          amount; // This adds for returns (negative amount) and subtracts for lends
       _lendList.removeAt(transactionIndex);
     });
     _saveLendData();
@@ -124,7 +134,11 @@ class _LendPageState extends State<LendPage> {
     // Replace yellow/black warning with a simple green confirmation
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Transaction deleted successfully'),
+        content: Text(
+          isReturn
+              ? 'Return transaction deleted'
+              : 'Transaction deleted successfully',
+        ),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 2),
       ),
@@ -133,11 +147,13 @@ class _LendPageState extends State<LendPage> {
 
   void _editTransaction(int transactionIndex) {
     final item = _lendList[transactionIndex];
+    final bool isReturn = item['type'] == 'return';
     final TextEditingController firstNameController = TextEditingController(
       text: item['firstName'],
     );
     final TextEditingController amountController = TextEditingController(
-      text: item['amount'].toString(),
+      // For return transactions, show the absolute value
+      text: (isReturn ? item['amount'].abs() : item['amount']).toString(),
     );
     final TextEditingController descriptionController = TextEditingController(
       text: item['description'] ?? '',
@@ -146,7 +162,7 @@ class _LendPageState extends State<LendPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit Transaction'),
+        title: Text(isReturn ? 'Edit Return' : 'Edit Transaction'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -162,7 +178,7 @@ class _LendPageState extends State<LendPage> {
               controller: amountController,
               keyboardType: TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: 'Amount',
+                labelText: isReturn ? 'Return Amount' : 'Amount',
                 border: OutlineInputBorder(),
                 prefixText: '₹',
               ),
@@ -193,15 +209,21 @@ class _LendPageState extends State<LendPage> {
                 setState(() {
                   // Subtract old amount from total
                   _totalLendAmount -= _lendList[transactionIndex]['amount'];
+
                   // Update the transaction
                   _lendList[transactionIndex]['firstName'] = firstName;
                   _lendList[transactionIndex]['fullName'] = firstName;
                   _lendList[transactionIndex]['firstNameLower'] = firstName
                       .toLowerCase();
-                  _lendList[transactionIndex]['amount'] = amount;
+
+                  // For return transactions, keep the amount negative
+                  _lendList[transactionIndex]['amount'] = isReturn
+                      ? -amount
+                      : amount;
                   _lendList[transactionIndex]['description'] = description;
+
                   // Add new amount to total
-                  _totalLendAmount += amount;
+                  _totalLendAmount += (isReturn ? -amount : amount);
                 });
                 _saveLendData();
                 Navigator.pop(context);
@@ -358,12 +380,26 @@ class _LendPageState extends State<LendPage> {
                     itemCount: personTransactions.length,
                     itemBuilder: (context, index) {
                       final transaction = personTransactions[index];
+                      final bool isReturn = transaction['type'] == 'return';
+                      final double amount = transaction['amount'];
+
                       return ListTile(
                         title: Text(
-                          '₹${transaction['amount'].toStringAsFixed(2)}',
+                          '₹${amount.abs().toStringAsFixed(2)}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            color: isReturn ? Colors.red : Colors.green,
+                          ),
+                        ),
+                        leading: CircleAvatar(
+                          backgroundColor: isReturn
+                              ? Colors.red.shade100
+                              : Colors.green.shade100,
+                          child: Icon(
+                            isReturn
+                                ? Icons.keyboard_return
+                                : Icons.attach_money,
+                            color: isReturn ? Colors.red : Colors.green,
                           ),
                         ),
                         subtitle: Column(
@@ -590,81 +626,117 @@ class _LendPageState extends State<LendPage> {
                       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       elevation: isSelected ? 4 : 1,
                       color: isSelected ? Colors.blue.shade50 : null,
-                      child: ListTile(
-                        onLongPress: () {
-                          setState(() {
-                            _isSelectionMode = true;
-                            _selectedPersons.add(personKey);
-                          });
-                        },
-                        onTap: _isSelectionMode
-                            ? () {
-                                setState(() {
-                                  if (isSelected) {
-                                    _selectedPersons.removeWhere(
-                                      (name) => name.toLowerCase() == personKey,
-                                    );
-                                    if (_selectedPersons.isEmpty) {
-                                      _isSelectionMode = false;
-                                    }
-                                  } else {
-                                    _selectedPersons.add(personKey);
-                                  }
-                                });
-                              }
-                            : () => _showLendHistory(displayName),
-                        leading: _isSelectionMode
-                            ? Checkbox(
-                                value: isSelected,
-                                onChanged: (checked) {
-                                  setState(() {
-                                    if (checked == true) {
-                                      _selectedPersons.add(personKey);
-                                    } else {
-                                      _selectedPersons.removeWhere(
-                                        (name) =>
-                                            name.toLowerCase() == personKey,
-                                      );
-                                      if (_selectedPersons.isEmpty) {
-                                        _isSelectionMode = false;
+                      child: Column(
+                        children: [
+                          ListTile(
+                            onLongPress: () {
+                              setState(() {
+                                _isSelectionMode = true;
+                                _selectedPersons.add(personKey);
+                              });
+                            },
+                            onTap: _isSelectionMode
+                                ? () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        _selectedPersons.removeWhere(
+                                          (name) =>
+                                              name.toLowerCase() == personKey,
+                                        );
+                                        if (_selectedPersons.isEmpty) {
+                                          _isSelectionMode = false;
+                                        }
+                                      } else {
+                                        _selectedPersons.add(personKey);
                                       }
-                                    }
-                                  });
-                                },
-                              )
-                            : CircleAvatar(
-                                child: Text(
-                                  displayName.isNotEmpty
-                                      ? displayName[0].toUpperCase()
-                                      : '?',
-                                ),
-                              ),
-                        title: Text(
-                          displayName,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          'Last Lend: ${_formatDateTime(latestTime)}',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '₹${totalAmount.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.green,
-                              ),
+                                    });
+                                  }
+                                : () => _showLendHistory(displayName),
+                            leading: _isSelectionMode
+                                ? Checkbox(
+                                    value: isSelected,
+                                    onChanged: (checked) {
+                                      setState(() {
+                                        if (checked == true) {
+                                          _selectedPersons.add(personKey);
+                                        } else {
+                                          _selectedPersons.removeWhere(
+                                            (name) =>
+                                                name.toLowerCase() == personKey,
+                                          );
+                                          if (_selectedPersons.isEmpty) {
+                                            _isSelectionMode = false;
+                                          }
+                                        }
+                                      });
+                                    },
+                                  )
+                                : CircleAvatar(
+                                    child: Text(
+                                      displayName.isNotEmpty
+                                          ? displayName[0].toUpperCase()
+                                          : '?',
+                                    ),
+                                  ),
+                            title: Text(
+                              displayName,
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            Text(
-                              '${personTransactions.length} transaction${personTransactions.length != 1 ? 's' : ''}',
+                            subtitle: Text(
+                              'Last Lend: ${_formatDateTime(latestTime)}',
                               style: TextStyle(fontSize: 12),
                             ),
-                          ],
-                        ),
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '₹${totalAmount.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                                Text(
+                                  '${personTransactions.length} transaction${personTransactions.length != 1 ? 's' : ''}',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Add Return Amount button below the ListTile
+                          if (!_isSelectionMode && totalAmount > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: 8.0,
+                                left: 8.0,
+                                right: 8.0,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  ElevatedButton.icon(
+                                    icon: Icon(Icons.keyboard_return, size: 16),
+                                    label: Text('Return Amount'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      textStyle: TextStyle(fontSize: 12),
+                                    ),
+                                    onPressed: () =>
+                                        _showReturnAmountDialogForPerson(
+                                          displayName,
+                                          totalAmount,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                     );
                   },
@@ -774,6 +846,138 @@ class _LendPageState extends State<LendPage> {
               backgroundColor: Colors.green, // Changed from red to green
             ),
             child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to process return amount for a person
+  void _processReturnAmount(
+    String personName,
+    List<Map<String, dynamic>> transactions,
+    double returnAmount,
+    String description,
+  ) {
+    // Add a new transaction for the return
+    setState(() {
+      _lendList.add({
+        'firstName': personName,
+        'fullName': personName,
+        'firstNameLower': personName.toLowerCase(),
+        'amount': -returnAmount, // Negative amount to indicate return
+        'description': description.isEmpty ? 'Amount returned' : description,
+        'time': DateTime.now(),
+        'type': 'return', // Mark as return transaction
+      });
+
+      // Update total lend amount
+      _totalLendAmount -= returnAmount;
+      if (_totalLendAmount < 0) _totalLendAmount = 0;
+    });
+
+    // Save changes
+    _saveLendData();
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '₹${returnAmount.toStringAsFixed(2)} returned by $personName',
+        ),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Simplified method to show return amount dialog for a person
+  void _showReturnAmountDialogForPerson(String personName, double totalAmount) {
+    final TextEditingController returnAmountController =
+        TextEditingController();
+    final TextEditingController descriptionController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Return Amount'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Total Lend to $personName: ₹${totalAmount.toStringAsFixed(2)}',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: returnAmountController,
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Return Amount',
+                border: OutlineInputBorder(),
+                prefixText: '₹',
+                hintText: 'Enter amount being returned',
+              ),
+            ),
+            SizedBox(height: 10),
+            TextField(
+              controller: descriptionController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+                hintText: 'Optional note about this return',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              double? returnAmount = double.tryParse(
+                returnAmountController.text.trim(),
+              );
+              String description = descriptionController.text.trim();
+
+              if (returnAmount != null && returnAmount > 0) {
+                if (returnAmount > totalAmount) {
+                  // Show warning if return amount is greater than total
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Return amount cannot exceed total lend amount',
+                      ),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                } else {
+                  // Process the return amount
+                  _processReturnAmount(
+                    personName,
+                    [],
+                    returnAmount,
+                    description,
+                  );
+                  Navigator.pop(context);
+                }
+              } else {
+                // Show error for invalid amount
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Please enter a valid return amount'),
+                    backgroundColor: Colors.red,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            child: Text('Return'),
           ),
         ],
       ),
