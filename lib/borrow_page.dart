@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter/services.dart';
+
+const List<String> _paymentMethods = ['Payment Method', 'Cash', 'Online'];
+
+const Map<String, IconData> _paymentIcons = {
+  'Cash': Icons.money,
+  'Online': Icons.credit_card,
+};
 
 class BorrowPage extends StatefulWidget {
   const BorrowPage({super.key});
@@ -13,6 +21,7 @@ class _BorrowPageState extends State<BorrowPage> {
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  String _selectedPaymentMethod = _paymentMethods[0];
 
   List<Map<String, dynamic>> _borrowList = [];
   double _totalBorrowAmount = 0.0;
@@ -42,10 +51,9 @@ class _BorrowPageState extends State<BorrowPage> {
               item['firstNameLower'] ?? item['firstName'].toLowerCase(),
           'amount': item['amount'],
           'description': item['description'],
+          'paymentMethod': item['paymentMethod'] ?? 'Cash',
           'time': DateTime.parse(item['time']),
-          'type':
-              item['type'] ??
-              'borrow', // Default to 'borrow' for backward compatibility
+          'type': item['type'] ?? 'borrow',
         };
       }).toList();
     }
@@ -64,8 +72,9 @@ class _BorrowPageState extends State<BorrowPage> {
             item['firstNameLower'] ?? item['firstName'].toLowerCase(),
         'amount': item['amount'],
         'description': item['description'],
+        'paymentMethod': item['paymentMethod'] ?? 'Cash',
         'time': (item['time'] as DateTime).toIso8601String(),
-        'type': item['type'] ?? 'borrow', // Include type in saved data
+        'type': item['type'] ?? 'borrow',
       };
       return jsonEncode(itemMap);
     }).toList();
@@ -79,15 +88,17 @@ class _BorrowPageState extends State<BorrowPage> {
     double? amount = double.tryParse(_amountController.text.trim());
     String description = _descriptionController.text.trim();
 
-    if (firstName.isNotEmpty && amount != null) {
+    if (firstName.isNotEmpty &&
+        amount != null &&
+        _selectedPaymentMethod != 'Payment Method') {
       setState(() {
-        // Store names in lowercase for case-insensitive comparison
         _borrowList.add({
           'firstName': firstName,
-          'fullName': firstName, // Use firstName as fullName
+          'fullName': firstName,
           'firstNameLower': firstName.toLowerCase(),
           'amount': amount,
           'description': description,
+          'paymentMethod': _selectedPaymentMethod,
           'time': DateTime.now(),
         });
 
@@ -95,10 +106,10 @@ class _BorrowPageState extends State<BorrowPage> {
         _firstNameController.clear();
         _amountController.clear();
         _descriptionController.clear();
+        _selectedPaymentMethod = _paymentMethods[0];
       });
       _saveBorrowData();
 
-      // Show success popup
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Added $firstName to Borrow list'),
@@ -106,15 +117,10 @@ class _BorrowPageState extends State<BorrowPage> {
           duration: Duration(seconds: 2),
         ),
       );
-    } else {
-      // Show error popup if fields are empty
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter name and amount'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 2),
-        ),
-      );
+    } else if (_selectedPaymentMethod == 'Payment Method') {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please select a payment method')));
     }
   }
 
@@ -168,6 +174,9 @@ class _BorrowPageState extends State<BorrowPage> {
           children: [
             TextField(
               controller: firstNameController,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+              ],
               decoration: InputDecoration(
                 labelText: 'Name',
                 border: OutlineInputBorder(),
@@ -414,6 +423,45 @@ class _BorrowPageState extends State<BorrowPage> {
                                 transaction['description'].toString(),
                                 style: TextStyle(fontStyle: FontStyle.italic),
                               ),
+                            SizedBox(height: 4),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: transaction['paymentMethod'] == 'Cash'
+                                    ? Colors.green.shade100
+                                    : Colors.blue.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _paymentIcons[transaction['paymentMethod']] ??
+                                        Icons.money,
+                                    size: 10,
+                                    color:
+                                        transaction['paymentMethod'] == 'Cash'
+                                        ? Colors.green.shade700
+                                        : Colors.blue.shade700,
+                                  ),
+                                  SizedBox(width: 2),
+                                  Text(
+                                    '${transaction['paymentMethod'] ?? 'Cash'}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color:
+                                          transaction['paymentMethod'] == 'Cash'
+                                          ? Colors.green.shade700
+                                          : Colors.blue.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                         trailing: Row(
@@ -498,10 +546,13 @@ class _BorrowPageState extends State<BorrowPage> {
             controller: _firstNameController,
             autocorrect: false,
             enableSuggestions: false,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+            ],
             decoration: InputDecoration(
               labelText: 'Name',
               border: OutlineInputBorder(),
-              hintText: 'Enter name',
+              hintText: 'Enter name (alphabets only)',
             ),
           ),
           SizedBox(height: 10),
@@ -515,6 +566,36 @@ class _BorrowPageState extends State<BorrowPage> {
               hintText: 'Enter amount',
               prefixText: '₹',
             ),
+          ),
+          SizedBox(height: 10),
+
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              labelText: 'Payment Method',
+              border: OutlineInputBorder(),
+              hintText: 'Select payment method',
+            ),
+            value: _selectedPaymentMethod,
+            items: _paymentMethods.map((String method) {
+              return DropdownMenuItem<String>(
+                value: method,
+                enabled: method != 'Payment Method',
+                child: Row(
+                  children: [
+                    if (method != 'Payment Method') ...[
+                      Icon(_paymentIcons[method], size: 16),
+                      SizedBox(width: 8),
+                    ],
+                    Text(method),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedPaymentMethod = newValue!;
+              });
+            },
           ),
           SizedBox(height: 10),
 
@@ -711,9 +792,57 @@ class _BorrowPageState extends State<BorrowPage> {
                               displayName,
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            subtitle: Text(
-                              'Last Borrow: ${_formatDateTime(latestTime)}',
-                              style: TextStyle(fontSize: 12),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Last Borrow: ${_formatDateTime(latestTime)}',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                SizedBox(height: 4),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        latestTransaction['paymentMethod'] ==
+                                            'Cash'
+                                        ? Colors.green.shade100
+                                        : Colors.blue.shade100,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _paymentIcons[latestTransaction['paymentMethod']] ??
+                                            Icons.money,
+                                        size: 10,
+                                        color:
+                                            latestTransaction['paymentMethod'] ==
+                                                'Cash'
+                                            ? Colors.green.shade700
+                                            : Colors.blue.shade700,
+                                      ),
+                                      SizedBox(width: 2),
+                                      Text(
+                                        '${latestTransaction['paymentMethod'] ?? 'Cash'}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color:
+                                              latestTransaction['paymentMethod'] ==
+                                                  'Cash'
+                                              ? Colors.green.shade700
+                                              : Colors.blue.shade700,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                             trailing: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -868,32 +997,30 @@ class _BorrowPageState extends State<BorrowPage> {
     List<Map<String, dynamic>> transactions,
     double returnAmount,
     String description,
+    String paymentMethod,
   ) {
-    // Add a new transaction for the return
     setState(() {
       _borrowList.add({
         'firstName': personName,
         'fullName': personName,
         'firstNameLower': personName.toLowerCase(),
-        'amount': -returnAmount, // Negative amount to indicate return
+        'amount': -returnAmount,
         'description': description.isEmpty ? 'Amount returned' : description,
+        'paymentMethod': paymentMethod,
         'time': DateTime.now(),
-        'type': 'return', // Mark as return transaction
+        'type': 'return',
       });
 
-      // Update total borrow amount
       _totalBorrowAmount -= returnAmount;
       if (_totalBorrowAmount < 0) _totalBorrowAmount = 0;
     });
 
-    // Save changes
     _saveBorrowData();
 
-    // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '₹${returnAmount.toStringAsFixed(2)} returned to $personName',
+          '₹${returnAmount.toStringAsFixed(2)} returned to $personName via $paymentMethod',
         ),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 2),
@@ -906,90 +1033,115 @@ class _BorrowPageState extends State<BorrowPage> {
     final TextEditingController returnAmountController =
         TextEditingController();
     final TextEditingController descriptionController = TextEditingController();
+    String selectedPaymentMethod = 'Cash'; // Default to Cash
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Return Amount'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Total Borrowed from $personName: ₹${totalAmount.toStringAsFixed(2)}',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: returnAmountController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Return Amount',
-                border: OutlineInputBorder(),
-                prefixText: '₹',
-                hintText: 'Enter amount being returned',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Return Amount'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Total Borrowed from $personName: ₹${totalAmount.toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-            SizedBox(height: 10),
-            TextField(
-              controller: descriptionController,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-                hintText: 'Optional note about this return',
+              SizedBox(height: 16),
+              TextField(
+                controller: returnAmountController,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Return Amount',
+                  border: OutlineInputBorder(),
+                  prefixText: '₹',
+                  hintText: 'Enter amount being returned',
+                ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+              SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Payment Method',
+                  border: OutlineInputBorder(),
+                ),
+                value: selectedPaymentMethod,
+                items: ['Cash', 'Online'].map((String method) {
+                  return DropdownMenuItem<String>(
+                    value: method,
+                    child: Row(
+                      children: [
+                        Icon(_paymentIcons[method], size: 16),
+                        SizedBox(width: 8),
+                        Text(method),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedPaymentMethod = newValue!;
+                  });
+                },
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: descriptionController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                  hintText: 'Optional note about this return',
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              double? returnAmount = double.tryParse(
-                returnAmountController.text.trim(),
-              );
-              String description = descriptionController.text.trim();
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                double? returnAmount = double.tryParse(
+                  returnAmountController.text.trim(),
+                );
+                String description = descriptionController.text.trim();
 
-              if (returnAmount != null && returnAmount > 0) {
-                if (returnAmount > totalAmount) {
-                  // Show warning if return amount is greater than total
+                if (returnAmount != null && returnAmount > 0) {
+                  if (returnAmount > totalAmount) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Return amount cannot exceed total borrowed amount',
+                        ),
+                        backgroundColor: Colors.red,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  } else {
+                    _processReturnAmount(
+                      personName,
+                      [],
+                      returnAmount,
+                      description,
+                      selectedPaymentMethod,
+                    );
+                    Navigator.pop(context);
+                  }
+                } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        'Return amount cannot exceed total borrowed amount',
-                      ),
+                      content: Text('Please enter a valid return amount'),
                       backgroundColor: Colors.red,
                       duration: Duration(seconds: 2),
                     ),
                   );
-                } else {
-                  // Process the return amount
-                  _processReturnAmount(
-                    personName,
-                    [],
-                    returnAmount,
-                    description,
-                  );
-                  Navigator.pop(context);
                 }
-              } else {
-                // Show error for invalid amount
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Please enter a valid return amount'),
-                    backgroundColor: Colors.red,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: Text('Return'),
-          ),
-        ],
+              },
+              child: Text('Return'),
+            ),
+          ],
+        ),
       ),
     );
   }

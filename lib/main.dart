@@ -5,9 +5,10 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'chart_page.dart'; // Import the new chart page
-import 'borrow_page.dart'; // Import the new borrow page
-import 'lend_page.dart'; // Import the new lend page
+import 'chart_page.dart';
+import 'borrow_page.dart';
+import 'lend_page.dart';
+import 'package:flutter/services.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -20,6 +21,12 @@ const List<String> _categories = [
   'Clothing & Accessories',
   'Entertainment',
   'Others',
+];
+
+const List<String> _paymentMethods = [
+  'Payment Method', // First item as a prompt
+  'Cash',
+  'Online',
 ];
 
 void main() {
@@ -59,6 +66,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   String _selectedCategory = _categories[0];
+  String _selectedPaymentMethod = _paymentMethods[0];
 
   List<Map<String, dynamic>> _items = [];
   double _totalAmount = 0.0;
@@ -105,6 +113,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             'category': item['category'],
             'name': item['name'],
             'price': item['price'],
+            'paymentMethod': item['paymentMethod'], // Add this line
             'time': (item['time'] as DateTime).toIso8601String(),
           }),
         )
@@ -124,6 +133,8 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
           'category': item['category'],
           'name': item['name'],
           'price': item['price'],
+          'paymentMethod':
+              item['paymentMethod'] ?? 'Cash', // Default for old items
           'time': DateTime.parse(item['time']),
         };
       }).toList();
@@ -136,13 +147,17 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     String name = _nameController.text.trim();
     double? price = double.tryParse(_priceController.text.trim());
 
-    // Check if a real category is selected (not the prompt)
-    if (name.isNotEmpty && price != null && _selectedCategory != 'Categories') {
+    // Check if a real category and payment method are selected
+    if (name.isNotEmpty &&
+        price != null &&
+        _selectedCategory != 'Categories' &&
+        _selectedPaymentMethod != 'Payment Method') {
       setState(() {
         _items.add({
           'category': _selectedCategory,
           'name': name,
           'price': price,
+          'paymentMethod': _selectedPaymentMethod,
           'time': DateTime.now(),
         });
         _totalAmount += price;
@@ -152,10 +167,13 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
       });
       _saveItems(); // Save after adding
     } else if (_selectedCategory == 'Categories') {
-      // Show error if category not selected
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Please select a category')));
+    } else if (_selectedPaymentMethod == 'Payment Method') {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please select a payment method')));
     }
   }
 
@@ -177,7 +195,13 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
 
     var excel = Excel.createExcel();
     Sheet sheetObject = excel['Sheet1'];
-    sheetObject.appendRow(['Category', 'Name', 'DateTime', 'Price']);
+    sheetObject.appendRow([
+      'Category',
+      'Name',
+      'DateTime',
+      'Payment Method',
+      'Price',
+    ]);
 
     double totalFilteredAmount = 0;
     for (var item in filteredItems) {
@@ -185,16 +209,18 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
         item['category'],
         item['name'],
         (item['time'] as DateTime).toString().substring(0, 16),
+        item['paymentMethod'] ?? 'Cash',
         item['price'].toString(),
       ]);
       totalFilteredAmount += item['price'];
     }
 
     // Add an empty row for spacing
-    sheetObject.appendRow(['', '', '', '']);
+    sheetObject.appendRow(['', '', '', '', '']);
 
     // Add the total row
     sheetObject.appendRow([
+      '',
       '',
       '',
       'Total',
@@ -510,9 +536,13 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             SizedBox(height: 10),
             TextField(
               controller: _nameController,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+              ],
               decoration: InputDecoration(
                 labelText: 'Item Name',
                 border: OutlineInputBorder(),
+                hintText: 'Enter item name (alphabets only)',
               ),
             ),
             SizedBox(height: 10),
@@ -523,6 +553,27 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: 'Payment Method',
+                border: OutlineInputBorder(),
+                hintText: 'Select payment method',
+              ),
+              value: _selectedPaymentMethod,
+              items: _paymentMethods.map((String method) {
+                return DropdownMenuItem<String>(
+                  value: method,
+                  enabled: method != 'Payment Method',
+                  child: Text(method),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedPaymentMethod = newValue!;
+                });
+              },
             ),
             SizedBox(height: 20),
 
@@ -678,6 +729,29 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                               '${item['name']}',
                               style: TextStyle(color: Colors.black),
                             ),
+                            SizedBox(height: 4),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: item['paymentMethod'] == 'Cash'
+                                    ? Colors.green.shade100
+                                    : Colors.blue.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '${item['paymentMethod'] ?? 'Cash'}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: item['paymentMethod'] == 'Cash'
+                                      ? Colors.green.shade700
+                                      : Colors.blue.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                         subtitle: Column(
@@ -758,8 +832,8 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     final TextEditingController priceController = TextEditingController(
       text: item['price'].toString(),
     );
-    // Use the existing category or default to the first real category (index 1)
     String selectedCategory = item['category'] ?? _categories[1];
+    String selectedPaymentMethod = item['paymentMethod'] ?? _paymentMethods[1];
 
     showDialog(
       context: context,
@@ -775,7 +849,6 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               ),
               value: selectedCategory,
               items: _categories.skip(1).map((String category) {
-                // Skip the prompt item
                 return DropdownMenuItem<String>(
                   value: category,
                   child: Text(category),
@@ -786,8 +859,28 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               },
             ),
             SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                labelText: 'Payment Method',
+                border: OutlineInputBorder(),
+              ),
+              value: selectedPaymentMethod,
+              items: _paymentMethods.skip(1).map((String method) {
+                return DropdownMenuItem<String>(
+                  value: method,
+                  child: Text(method),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                selectedPaymentMethod = newValue!;
+              },
+            ),
+            SizedBox(height: 10),
             TextField(
               controller: nameController,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+              ],
               decoration: InputDecoration(
                 labelText: 'Item Name',
                 border: OutlineInputBorder(),
@@ -815,16 +908,14 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               double? price = double.tryParse(priceController.text.trim());
               if (name.isNotEmpty && price != null) {
                 setState(() {
-                  // Subtract old price from total
                   _totalAmount -= _items[index]['price'];
-                  // Update the item
                   _items[index]['name'] = name;
                   _items[index]['price'] = price;
                   _items[index]['category'] = selectedCategory;
-                  // Add new price to total
+                  _items[index]['paymentMethod'] = selectedPaymentMethod;
                   _totalAmount += price;
                 });
-                _saveItems(); // Save after updating
+                _saveItems();
                 Navigator.pop(context);
               }
             },

@@ -50,19 +50,28 @@ class ChartPage extends StatelessWidget {
     return totals;
   }
 
+  // Calculate payment method totals
+  Map<String, double> _getPaymentMethodTotals() {
+    Map<String, double> totals = {'Cash': 0.0, 'Online': 0.0};
+
+    for (var item in items) {
+      String paymentMethod = item['paymentMethod'] as String? ?? 'Cash';
+      double price = (item['price'] as num?)?.toDouble() ?? 0.0;
+      totals[paymentMethod] = (totals[paymentMethod] ?? 0) + price;
+    }
+
+    return totals;
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Add a null check for totalAmount
-    final safeTotal = totalAmount > 0
-        ? totalAmount
-        : 0.1; // Avoid division by zero
+    final safeTotal = totalAmount > 0 ? totalAmount : 0.1;
     Map<String, double> categoryTotals = _getCategoryTotals();
+    Map<String, double> paymentTotals = _getPaymentMethodTotals();
 
-    // Create a map to assign consistent colors to categories
     final Map<String, Color> categoryColors = {};
     int colorIndex = 0;
 
-    // First, assign colors to categories with values > 0
     for (var entry in categoryTotals.entries.where((e) => e.value > 0)) {
       categoryColors[entry.key] =
           _chartColors[colorIndex % _chartColors.length];
@@ -76,6 +85,77 @@ class ChartPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Payment Method Summary
+            Text(
+              'Payment Method Summary',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Card(
+                    color: Colors.green.shade50,
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Icon(Icons.money, color: Colors.green, size: 30),
+                          SizedBox(height: 8),
+                          Text(
+                            'Cash',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '₹${paymentTotals['Cash']!.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Card(
+                    color: Colors.blue.shade50,
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Icon(Icons.credit_card, color: Colors.blue, size: 30),
+                          SizedBox(height: 8),
+                          Text(
+                            'Online',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '₹${paymentTotals['Online']!.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 30),
+
             Text(
               'Spending by Category',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
