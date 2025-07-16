@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'auth/login_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -15,12 +16,21 @@ class _ProfilePageState extends State<ProfilePage> {
   String email = '';
   bool isLoading = true;
   String? profileImagePath;
+  String appVersion = '';
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _getAppVersion();
+  }
+
+  Future<void> _getAppVersion() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -290,6 +300,43 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     SizedBox(height: 40),
+
+                    // Version info card
+                    Card(
+                      elevation: 2,
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.blue),
+                            SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'App Version',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                Text(
+                                  appVersion.isNotEmpty
+                                      ? appVersion
+                                      : 'Loading...',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+
                     Container(
                       width: double.infinity,
                       child: ElevatedButton.icon(
