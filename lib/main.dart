@@ -203,25 +203,31 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     String name = _nameController.text.trim();
     double? price = double.tryParse(_priceController.text.trim());
 
-    // Check if a real category and payment method are selected
     if (name.isNotEmpty &&
         price != null &&
         _selectedCategory != 'Categories' &&
         _selectedPaymentMethod != 'Payment Method') {
       setState(() {
-        _items.add({
+        _items.insert(0, {
+          // Insert at index 0 (top)
           'category': _selectedCategory,
           'name': name,
           'price': price,
           'paymentMethod': _selectedPaymentMethod,
           'time': DateTime.now(),
         });
+
+        // Sort by time descending (newest first)
+        _items.sort(
+          (a, b) => (b['time'] as DateTime).compareTo(a['time'] as DateTime),
+        );
+
         _totalAmount += price;
         _nameController.clear();
         _priceController.clear();
         _currentIndex = 1; // Switch to Details tab after adding
       });
-      _saveItems(); // Save after adding
+      _saveItems();
     } else if (_selectedCategory == 'Categories') {
       ScaffoldMessenger.of(
         context,
@@ -675,34 +681,52 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             // Add a larger gap between Add and Lend buttons
             SizedBox(height: 60), // Increased from 10 to 30
 
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => LendPage()),
                 );
               },
+              icon: Icon(
+                Icons.call_made,
+                color: Colors.white,
+                size: 24,
+                weight: 700,
+              ), // Give/outgoing icon
+              label: Text(
+                'Lend ',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
                 minimumSize: Size(double.infinity, 50), // Full width and height
               ),
-              child: Text('Lend'),
             ),
             SizedBox(height: 10),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => BorrowPage()),
                 );
               },
+              icon: Icon(
+                Icons.call_received,
+                color: Colors.white,
+                size: 24,
+                weight: 700,
+              ), // Take/incoming icon
+              label: Text(
+                'Borrow',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
                 minimumSize: Size(double.infinity, 50), // Full width and height
               ),
-              child: Text('Borrow'),
             ),
           ],
         ),
