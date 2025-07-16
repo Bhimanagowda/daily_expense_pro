@@ -38,49 +38,65 @@ class _LendPageState extends State<LendPage> {
 
   Future<void> _loadLendData() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String>? lendJson = prefs.getStringList('lendList');
-    double? total = prefs.getDouble('totalLendAmount');
+    String? currentUserJson = prefs.getString('currentUser');
 
-    if (lendJson != null) {
-      _lendList = lendJson.map((itemStr) {
-        final item = jsonDecode(itemStr);
-        return {
-          'firstName': item['firstName'],
-          'fullName': item['fullName'],
-          'firstNameLower':
-              item['firstNameLower'] ?? item['firstName'].toLowerCase(),
-          'amount': item['amount'],
-          'description': item['description'],
-          'paymentMethod': item['paymentMethod'] ?? 'Cash',
-          'time': DateTime.parse(item['time']),
-          'type': item['type'] ?? 'lend',
-        };
-      }).toList();
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+
+      List<String>? lendJson = prefs.getStringList('lendList_$userId');
+      double? total = prefs.getDouble('totalLendAmount_$userId');
+
+      if (lendJson != null) {
+        _lendList = lendJson.map((itemStr) {
+          final item = jsonDecode(itemStr);
+          return {
+            'firstName': item['firstName'],
+            'fullName': item['fullName'],
+            'firstNameLower':
+                item['firstNameLower'] ?? item['firstName'].toLowerCase(),
+            'amount': item['amount'],
+            'description': item['description'],
+            'paymentMethod': item['paymentMethod'] ?? 'Cash',
+            'time': DateTime.parse(item['time']),
+            'type': item['type'] ?? 'lend',
+          };
+        }).toList();
+      } else {
+        _lendList = [];
+      }
+
+      _totalLendAmount = total ?? 0.0;
     }
-
-    if (total != null) _totalLendAmount = total;
     setState(() {});
   }
 
   Future<void> _saveLendData() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> lendJson = _lendList.map((item) {
-      Map<String, dynamic> itemMap = {
-        'firstName': item['firstName'],
-        'fullName': item['firstName'],
-        'firstNameLower':
-            item['firstNameLower'] ?? item['firstName'].toLowerCase(),
-        'amount': item['amount'],
-        'description': item['description'],
-        'paymentMethod': item['paymentMethod'] ?? 'Cash',
-        'time': (item['time'] as DateTime).toIso8601String(),
-        'type': item['type'] ?? 'lend',
-      };
-      return jsonEncode(itemMap);
-    }).toList();
+    String? currentUserJson = prefs.getString('currentUser');
 
-    await prefs.setStringList('lendList', lendJson);
-    await prefs.setDouble('totalLendAmount', _totalLendAmount);
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+
+      List<String> lendJson = _lendList.map((item) {
+        Map<String, dynamic> itemMap = {
+          'firstName': item['firstName'],
+          'fullName': item['firstName'],
+          'firstNameLower':
+              item['firstNameLower'] ?? item['firstName'].toLowerCase(),
+          'amount': item['amount'],
+          'description': item['description'],
+          'paymentMethod': item['paymentMethod'] ?? 'Cash',
+          'time': (item['time'] as DateTime).toIso8601String(),
+          'type': item['type'] ?? 'lend',
+        };
+        return jsonEncode(itemMap);
+      }).toList();
+
+      await prefs.setStringList('lendList_$userId', lendJson);
+      await prefs.setDouble('totalLendAmount_$userId', _totalLendAmount);
+    }
   }
 
   void _addLendItem() {

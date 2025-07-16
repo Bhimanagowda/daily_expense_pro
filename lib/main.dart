@@ -9,6 +9,9 @@ import 'chart_page.dart';
 import 'borrow_page.dart';
 import 'lend_page.dart';
 import 'package:flutter/services.dart';
+import 'auth/login_page.dart';
+import 'profile_page.dart';
+import 'notes_page.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -41,8 +44,43 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Daily Expense',
       debugShowCheckedModeBanner: false,
-      home: ExpenditureScreen(),
+      home: AuthWrapper(),
     );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  @override
+  _AuthWrapperState createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+    setState(() {
+      _isLoggedIn = isLoggedIn;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return _isLoggedIn ? ExpenditureScreen() : LoginPage();
   }
 }
 
@@ -107,39 +145,57 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
 
   Future<void> _saveItems() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> itemsJson = _items
-        .map(
-          (item) => jsonEncode({
-            'category': item['category'],
-            'name': item['name'],
-            'price': item['price'],
-            'paymentMethod': item['paymentMethod'], // Add this line
-            'time': (item['time'] as DateTime).toIso8601String(),
-          }),
-        )
-        .toList();
-    prefs.setStringList('items', itemsJson);
-    prefs.setDouble('totalAmount', _totalAmount);
+    String? currentUserJson = prefs.getString('currentUser');
+
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId =
+          currentUser['username']; // Use username as unique identifier
+
+      List<String> itemsJson = _items
+          .map(
+            (item) => jsonEncode({
+              'category': item['category'],
+              'name': item['name'],
+              'price': item['price'],
+              'paymentMethod': item['paymentMethod'],
+              'time': (item['time'] as DateTime).toIso8601String(),
+            }),
+          )
+          .toList();
+      prefs.setStringList('items_$userId', itemsJson);
+      prefs.setDouble('totalAmount_$userId', _totalAmount);
+    }
   }
 
   Future<void> _loadItems() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String>? itemsJson = prefs.getStringList('items');
-    double? total = prefs.getDouble('totalAmount');
-    if (itemsJson != null) {
-      _items = itemsJson.map((itemStr) {
-        final item = jsonDecode(itemStr);
-        return {
-          'category': item['category'],
-          'name': item['name'],
-          'price': item['price'],
-          'paymentMethod':
-              item['paymentMethod'] ?? 'Cash', // Default for old items
-          'time': DateTime.parse(item['time']),
-        };
-      }).toList();
+    String? currentUserJson = prefs.getString('currentUser');
+
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+
+      List<String>? itemsJson = prefs.getStringList('items_$userId');
+      double? total = prefs.getDouble('totalAmount_$userId');
+
+      if (itemsJson != null) {
+        _items = itemsJson.map((itemStr) {
+          final item = jsonDecode(itemStr);
+          return {
+            'category': item['category'],
+            'name': item['name'],
+            'price': item['price'],
+            'paymentMethod': item['paymentMethod'] ?? 'Cash',
+            'time': DateTime.parse(item['time']),
+          };
+        }).toList();
+      } else {
+        _items = []; // Initialize empty list for new user
+      }
+
+      _totalAmount = total ?? 0.0; // Initialize to 0 for new user
     }
-    if (total != null) _totalAmount = total;
     setState(() {});
   }
 
@@ -493,6 +549,20 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                     fontWeight: FontWeight.bold,
                     color: Colors.grey[700],
                   ),
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.note_alt,
+                    size: 36, // Larger icon
+                    color: Colors.blue,
+                  ),
+                  tooltip: 'Notes',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => NotesPage()),
+                    );
+                  },
                 ),
               ],
             ),
@@ -940,7 +1010,45 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text('Daily Expenditure-C')),
+      appBar: AppBar(
+        title: Text('Daily Expenditure-c'),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'logout') {
+                _logout();
+              } else if (value == 'profile') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ProfilePage()),
+                );
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'profile',
+                child: Row(
+                  children: [
+                    Icon(Icons.person),
+                    SizedBox(width: 8),
+                    Text('Profile'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout),
+                    SizedBox(width: 8),
+                    Text('Logout'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
@@ -982,5 +1090,16 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     String period = dateTime.hour >= 12 ? 'PM' : 'AM';
 
     return "$year-$month-$day $hour:$minute:$second $period";
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', false);
+    await prefs.remove('currentUser');
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
+    );
   }
 }

@@ -38,49 +38,65 @@ class _BorrowPageState extends State<BorrowPage> {
 
   Future<void> _loadBorrowData() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String>? borrowJson = prefs.getStringList('borrowList');
-    double? total = prefs.getDouble('totalBorrowAmount');
+    String? currentUserJson = prefs.getString('currentUser');
 
-    if (borrowJson != null) {
-      _borrowList = borrowJson.map((itemStr) {
-        final item = jsonDecode(itemStr);
-        return {
-          'firstName': item['firstName'],
-          'fullName': item['fullName'],
-          'firstNameLower':
-              item['firstNameLower'] ?? item['firstName'].toLowerCase(),
-          'amount': item['amount'],
-          'description': item['description'],
-          'paymentMethod': item['paymentMethod'] ?? 'Cash',
-          'time': DateTime.parse(item['time']),
-          'type': item['type'] ?? 'borrow',
-        };
-      }).toList();
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+
+      List<String>? borrowJson = prefs.getStringList('borrowList_$userId');
+      double? total = prefs.getDouble('totalBorrowAmount_$userId');
+
+      if (borrowJson != null) {
+        _borrowList = borrowJson.map((itemStr) {
+          final item = jsonDecode(itemStr);
+          return {
+            'firstName': item['firstName'],
+            'fullName': item['fullName'],
+            'firstNameLower':
+                item['firstNameLower'] ?? item['firstName'].toLowerCase(),
+            'amount': item['amount'],
+            'description': item['description'],
+            'paymentMethod': item['paymentMethod'] ?? 'Cash',
+            'time': DateTime.parse(item['time']),
+            'type': item['type'] ?? 'borrow',
+          };
+        }).toList();
+      } else {
+        _borrowList = [];
+      }
+
+      _totalBorrowAmount = total ?? 0.0;
     }
-
-    if (total != null) _totalBorrowAmount = total;
     setState(() {});
   }
 
   Future<void> _saveBorrowData() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> borrowJson = _borrowList.map((item) {
-      Map<String, dynamic> itemMap = {
-        'firstName': item['firstName'],
-        'fullName': item['firstName'],
-        'firstNameLower':
-            item['firstNameLower'] ?? item['firstName'].toLowerCase(),
-        'amount': item['amount'],
-        'description': item['description'],
-        'paymentMethod': item['paymentMethod'] ?? 'Cash',
-        'time': (item['time'] as DateTime).toIso8601String(),
-        'type': item['type'] ?? 'borrow',
-      };
-      return jsonEncode(itemMap);
-    }).toList();
+    String? currentUserJson = prefs.getString('currentUser');
 
-    await prefs.setStringList('borrowList', borrowJson);
-    await prefs.setDouble('totalBorrowAmount', _totalBorrowAmount);
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+
+      List<String> borrowJson = _borrowList.map((item) {
+        Map<String, dynamic> itemMap = {
+          'firstName': item['firstName'],
+          'fullName': item['firstName'],
+          'firstNameLower':
+              item['firstNameLower'] ?? item['firstName'].toLowerCase(),
+          'amount': item['amount'],
+          'description': item['description'],
+          'paymentMethod': item['paymentMethod'] ?? 'Cash',
+          'time': (item['time'] as DateTime).toIso8601String(),
+          'type': item['type'] ?? 'borrow',
+        };
+        return jsonEncode(itemMap);
+      }).toList();
+
+      await prefs.setStringList('borrowList_$userId', borrowJson);
+      await prefs.setDouble('totalBorrowAmount_$userId', _totalBorrowAmount);
+    }
   }
 
   void _addBorrowItem() {
