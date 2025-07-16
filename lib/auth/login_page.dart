@@ -34,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final usersJson = prefs.getStringList('users') ?? [];
-      
+
       String usernameOrEmail = _usernameController.text.trim();
       String password = _passwordController.text.trim();
 
@@ -43,7 +43,8 @@ class _LoginPageState extends State<LoginPage> {
 
       for (String userStr in usersJson) {
         Map<String, dynamic> user = jsonDecode(userStr);
-        if ((user['username'] == usernameOrEmail || user['email'] == usernameOrEmail) && 
+        if ((user['username'] == usernameOrEmail ||
+                user['email'] == usernameOrEmail) &&
             user['password'] == password) {
           userFound = true;
           currentUser = user;
@@ -58,7 +59,9 @@ class _LoginPageState extends State<LoginPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login successful! Welcome ${currentUser!['username']}'),
+            content: Text(
+              'Login successful! Welcome ${currentUser!['username']}',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -99,7 +102,9 @@ class _LoginPageState extends State<LoginPage> {
           padding: EdgeInsets.all(24.0),
           child: Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Padding(
               padding: EdgeInsets.all(32.0),
               child: Form(
@@ -107,11 +112,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.account_balance_wallet,
-                      size: 80,
-                      color: Colors.blue,
-                    ),
+                    Icon(Icons.login, size: 80, color: Colors.blue),
                     SizedBox(height: 16),
                     Text(
                       'Daily Expense',
@@ -124,10 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                     SizedBox(height: 8),
                     Text(
                       'Sign in to continue',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                     ),
                     SizedBox(height: 32),
                     TextFormField(
@@ -154,7 +152,11 @@ class _LoginPageState extends State<LoginPage> {
                         labelText: 'Password',
                         prefixIcon: Icon(Icons.lock),
                         suffixIcon: IconButton(
-                          icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
                           onPressed: () {
                             setState(() {
                               _isPasswordVisible = !_isPasswordVisible;
@@ -179,7 +181,9 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
+                            MaterialPageRoute(
+                              builder: (context) => ForgotPasswordPage(),
+                            ),
                           );
                         },
                         child: Text('Forgot Password?'),
@@ -201,7 +205,10 @@ class _LoginPageState extends State<LoginPage> {
                             ? CircularProgressIndicator(color: Colors.white)
                             : Text(
                                 'Login',
-                                style: TextStyle(fontSize: 18, color: Colors.white),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                ),
                               ),
                       ),
                     ),
@@ -214,7 +221,9 @@ class _LoginPageState extends State<LoginPage> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => RegisterPage()),
+                              MaterialPageRoute(
+                                builder: (context) => RegisterPage(),
+                              ),
                             );
                           },
                           child: Text(
