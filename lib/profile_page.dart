@@ -7,8 +7,12 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'auth/login_page.dart';
 
 class ProfilePage extends StatefulWidget {
+  final Function(Locale) onLanguageChanged;
+
+  const ProfilePage({super.key, required this.onLanguageChanged});
+
   @override
-  _ProfilePageState createState() => _ProfilePageState();
+  State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
@@ -143,7 +147,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
         // Navigate to login page
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => LoginPage()),
+          MaterialPageRoute(
+            builder: (context) =>
+                LoginPage(onLanguageChanged: widget.onLanguageChanged),
+          ),
           (route) => false,
         );
 
@@ -301,42 +308,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     SizedBox(height: 40),
 
-                    // Version info card
-                    Card(
-                      elevation: 2,
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline, color: Colors.blue),
-                            SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'App Version',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                Text(
-                                  appVersion.isNotEmpty
-                                      ? appVersion
-                                      : 'Loading...',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-
+                    // Version info card has been moved to settings page
                     Container(
                       width: double.infinity,
                       child: ElevatedButton.icon(

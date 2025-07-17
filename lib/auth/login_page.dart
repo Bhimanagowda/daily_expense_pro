@@ -6,8 +6,17 @@ import 'forgot_password_page.dart';
 import '../main.dart';
 
 class LoginPage extends StatefulWidget {
+  final Function(Locale) onLanguageChanged;
+  final Function(bool)? onThemeChanged;
+
+  const LoginPage({
+    super.key,
+    required this.onLanguageChanged,
+    this.onThemeChanged,
+  });
+
   @override
-  _LoginPageState createState() => _LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -69,7 +78,12 @@ class _LoginPageState extends State<LoginPage> {
         // Navigate to home page
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => ExpenditureScreen()),
+          MaterialPageRoute(
+            builder: (context) => ExpenditureScreen(
+              onLanguageChanged: widget.onLanguageChanged,
+              onThemeChanged: widget.onThemeChanged ?? (bool isDark) {},
+            ),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:async';
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide TextStyle, TextSpan;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,8 @@ import 'package:flutter/services.dart';
 import 'auth/login_page.dart';
 import 'profile_page.dart';
 import 'notes_page.dart';
+import 'settings_page.dart';
+import 'l10n/app_localizations.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -36,22 +39,92 @@ void main() {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  Locale _locale = const Locale('en');
+  bool _isDarkMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final languageCode = prefs.getString('language_code') ?? 'en';
+    final isDarkMode = prefs.getBool('dark_mode') ?? false;
+    setState(() {
+      _locale = Locale(languageCode);
+      _isDarkMode = isDarkMode;
+    });
+  }
+
+  void _changeLanguage(Locale locale) {
+    setState(() {
+      _locale = locale;
+    });
+  }
+
+  void _changeTheme(bool isDark) {
+    setState(() {
+      _isDarkMode = isDark;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Daily Expense',
       debugShowCheckedModeBanner: false,
-      home: AuthWrapper(),
+      locale: _locale,
+      theme: ThemeData(
+        brightness: Brightness.light,
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+      ),
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(1.0)),
+          child: child!,
+        );
+      },
+      home: AuthWrapper(
+        onLanguageChanged: _changeLanguage,
+        onThemeChanged: _changeTheme,
+      ),
     );
   }
 }
 
 class AuthWrapper extends StatefulWidget {
+  final Function(Locale) onLanguageChanged;
+  final Function(bool) onThemeChanged;
+
+  const AuthWrapper({
+    super.key,
+    required this.onLanguageChanged,
+    required this.onThemeChanged,
+  });
+
   @override
-  _AuthWrapperState createState() => _AuthWrapperState();
+  State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
@@ -80,15 +153,30 @@ class _AuthWrapperState extends State<AuthWrapper> {
       return Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return _isLoggedIn ? ExpenditureScreen() : LoginPage();
+    return _isLoggedIn
+        ? ExpenditureScreen(
+            onLanguageChanged: widget.onLanguageChanged,
+            onThemeChanged: widget.onThemeChanged,
+          )
+        : LoginPage(
+            onLanguageChanged: widget.onLanguageChanged,
+            onThemeChanged: widget.onThemeChanged,
+          );
   }
 }
 
 class ExpenditureScreen extends StatefulWidget {
-  const ExpenditureScreen({super.key});
+  final Function(Locale) onLanguageChanged;
+  final Function(bool) onThemeChanged;
+
+  const ExpenditureScreen({
+    super.key,
+    required this.onLanguageChanged,
+    required this.onThemeChanged,
+  });
 
   @override
-  _ExpenditureScreenState createState() => _ExpenditureScreenState();
+  State<ExpenditureScreen> createState() => _ExpenditureScreenState();
 }
 
 class _ExpenditureScreenState extends State<ExpenditureScreen> {
@@ -111,8 +199,6 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   final List<int> _selectedIndexes = [];
   bool _isSelectionMode = false;
 
-  final List<Widget> _pages = [];
-
   @override
   void initState() {
     super.initState();
@@ -123,16 +209,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     });
     _loadItems();
 
-    // Initialize pages after loading items
-    _pages.add(_buildHomePage());
-    _pages.add(_buildDetailsPage());
-    _pages.add(
-      ChartPage(
-        items: _items,
-        totalAmount: _totalAmount,
-        categories: _categories,
-      ),
-    );
+    // Pages will be initialized in build method
   }
 
   @override
@@ -257,36 +334,44 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
 
     var excel = Excel.createExcel();
     Sheet sheetObject = excel['Sheet1'];
+
+    // Convert strings to TextCellValue
     sheetObject.appendRow([
-      'Category',
-      'Name',
-      'DateTime',
-      'Payment Method',
-      'Price',
+      TextCellValue('Category'),
+      TextCellValue('Name'),
+      TextCellValue('DateTime'),
+      TextCellValue('Payment Method'),
+      TextCellValue('Price'),
     ]);
 
     double totalFilteredAmount = 0;
     for (var item in filteredItems) {
       sheetObject.appendRow([
-        item['category'],
-        item['name'],
-        (item['time'] as DateTime).toString().substring(0, 16),
-        item['paymentMethod'] ?? 'Cash',
-        item['price'].toString(),
+        TextCellValue(item['category']),
+        TextCellValue(item['name']),
+        TextCellValue((item['time'] as DateTime).toString().substring(0, 16)),
+        TextCellValue(item['paymentMethod'] ?? 'Cash'),
+        TextCellValue(item['price'].toString()),
       ]);
       totalFilteredAmount += item['price'];
     }
 
     // Add an empty row for spacing
-    sheetObject.appendRow(['', '', '', '', '']);
+    sheetObject.appendRow([
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue(''),
+    ]);
 
     // Add the total row
     sheetObject.appendRow([
-      '',
-      '',
-      '',
-      'Total',
-      totalFilteredAmount.toStringAsFixed(2),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue('Total'),
+      TextCellValue(totalFilteredAmount.toStringAsFixed(2)),
     ]);
 
     var fileBytes = excel.encode();
@@ -576,16 +661,16 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
 
             // Your existing form elements
             Text(
-              'Add New Expense',
+              AppLocalizations.of(context)!.addNewExpense,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
 
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
-                labelText: 'Category',
+                labelText: AppLocalizations.of(context)!.category,
                 border: OutlineInputBorder(),
-                hintText: 'Select a category',
+                hintText: AppLocalizations.of(context)!.selectCategory,
               ),
               value: _selectedCategory,
               items: _categories.map((String category) {
@@ -616,7 +701,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                 FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
               ],
               decoration: InputDecoration(
-                labelText: 'Item Name',
+                labelText: AppLocalizations.of(context)!.itemName,
                 border: OutlineInputBorder(),
                 hintText: 'Enter item name (alphabets only)',
               ),
@@ -625,7 +710,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             TextField(
               controller: _priceController,
               decoration: InputDecoration(
-                labelText: 'Item Price',
+                labelText: AppLocalizations.of(context)!.itemPrice,
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
@@ -633,9 +718,9 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
-                labelText: 'Payment Method',
+                labelText: AppLocalizations.of(context)!.paymentMethod,
                 border: OutlineInputBorder(),
-                hintText: 'Select payment method',
+                hintText: AppLocalizations.of(context)!.selectPaymentMethod,
               ),
               value: _selectedPaymentMethod,
               items: _paymentMethods.map((String method) {
@@ -657,7 +742,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             ElevatedButton(
               onPressed: _addItem,
               child: Text(
-                'Add',
+                AppLocalizations.of(context)!.add,
                 style: TextStyle(
                   fontSize: 18, // Larger text
                   fontWeight: FontWeight.bold,
@@ -695,7 +780,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                 weight: 700,
               ), // Give/outgoing icon
               label: Text(
-                'Lend ',
+                AppLocalizations.of(context)!.lend,
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               style: ElevatedButton.styleFrom(
@@ -719,7 +804,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                 weight: 700,
               ), // Take/incoming icon
               label: Text(
-                'Borrow',
+                AppLocalizations.of(context)!.borrow,
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               style: ElevatedButton.styleFrom(
@@ -744,20 +829,22 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Items:',
+                AppLocalizations.of(context)!.items,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               ElevatedButton.icon(
                 onPressed: _items.isEmpty ? null : _downloadExcel,
                 icon: Icon(Icons.download),
-                label: Text('Download with Date Range'),
+                label: Text(
+                  AppLocalizations.of(context)!.downloadWithDateRange,
+                ),
               ),
             ],
           ),
           SizedBox(height: 10),
           Expanded(
             child: _items.isEmpty
-                ? Text('No items added.')
+                ? Text(AppLocalizations.of(context)!.noItemsAdded)
                 : ListView.builder(
                     itemCount: _items.length,
                     itemBuilder: (context, index) {
@@ -812,7 +899,11 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                                     text: '${item['category']}: ',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.black,
+                                      color:
+                                          Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.white
+                                          : Colors.black,
                                     ),
                                   ),
                                 ],
@@ -821,7 +912,13 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                             SizedBox(height: 4),
                             Text(
                               '${item['name']}',
-                              style: TextStyle(color: Colors.black),
+                              style: TextStyle(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
                             ),
                             SizedBox(height: 4),
                             Container(
@@ -840,8 +937,14 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: item['paymentMethod'] == 'Cash'
-                                      ? Colors.green.shade700
-                                      : Colors.blue.shade700,
+                                      ? (Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.green.shade300
+                                            : Colors.green.shade700)
+                                      : (Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.blue.shade300
+                                            : Colors.blue.shade700),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -854,7 +957,14 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                             SizedBox(height: 4),
                             Text(
                               'DATETIME: ${_formatDateTime(time)}',
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700],
+                              ),
                             ),
                             SizedBox(height: 8),
                           ],
@@ -868,7 +978,11 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                                 '₹${item['price'].toStringAsFixed(2)}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white
+                                      : Colors.black,
                                 ),
                               ),
                               SizedBox(width: 8),
@@ -885,7 +999,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
           ),
           SizedBox(height: 10),
           Text(
-            'Total Amount: ₹${_totalAmount.toStringAsFixed(2)}',
+            '${AppLocalizations.of(context)!.totalAmount}: ₹${_totalAmount.toStringAsFixed(2)}',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           if (_isSelectionMode)
@@ -893,7 +1007,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               children: [
                 ElevatedButton.icon(
                   icon: Icon(Icons.delete),
-                  label: Text('Delete Selected'),
+                  label: Text(AppLocalizations.of(context)!.deleteSelected),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color.fromARGB(255, 174, 158, 156),
                   ),
@@ -932,13 +1046,13 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Update Item'),
+        title: Text(AppLocalizations.of(context)!.updateItem),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
-                labelText: 'Category',
+                labelText: AppLocalizations.of(context)!.category,
                 border: OutlineInputBorder(),
               ),
               value: selectedCategory,
@@ -955,7 +1069,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
-                labelText: 'Payment Method',
+                labelText: AppLocalizations.of(context)!.paymentMethod,
                 border: OutlineInputBorder(),
               ),
               value: selectedPaymentMethod,
@@ -976,7 +1090,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                 FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
               ],
               decoration: InputDecoration(
-                labelText: 'Item Name',
+                labelText: AppLocalizations.of(context)!.itemName,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -984,7 +1098,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             TextField(
               controller: priceController,
               decoration: InputDecoration(
-                labelText: 'Item Price',
+                labelText: AppLocalizations.of(context)!.itemPrice,
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
@@ -994,7 +1108,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1013,7 +1127,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                 Navigator.pop(context);
               }
             },
-            child: Text('Update'),
+            child: Text(AppLocalizations.of(context)!.update),
           ),
         ],
       ),
@@ -1022,20 +1136,22 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Refresh pages when data changes
-    _pages[0] = _buildHomePage();
-    _pages[1] = _buildDetailsPage();
-    _pages[2] = ChartPage(
-      items: _items.isNotEmpty ? _items : [], // Ensure we pass a valid list
-      totalAmount: _totalAmount > 0
-          ? _totalAmount
-          : 0.0, // Ensure we pass a valid amount
-      categories: _categories,
-    );
+    // Initialize pages in build method to have access to localization context
+    final List<Widget> pages = [
+      _buildHomePage(),
+      _buildDetailsPage(),
+      ChartPage(
+        items: _items.isNotEmpty ? _items : [], // Ensure we pass a valid list
+        totalAmount: _totalAmount > 0
+            ? _totalAmount
+            : 0.0, // Ensure we pass a valid amount
+        categories: _categories,
+      ),
+    ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Daily Expenditure-c'),
+        title: Text(AppLocalizations.of(context)!.dailyExpenditure),
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) {
@@ -1044,7 +1160,21 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
               } else if (value == 'profile') {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ProfilePage()),
+                  MaterialPageRoute(
+                    builder: (context) => ProfilePage(
+                      onLanguageChanged: widget.onLanguageChanged,
+                    ),
+                  ),
+                );
+              } else if (value == 'settings') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SettingsPage(
+                      onLanguageChanged: widget.onLanguageChanged,
+                      onThemeChanged: widget.onThemeChanged,
+                    ),
+                  ),
                 );
               }
             },
@@ -1055,7 +1185,17 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                   children: [
                     Icon(Icons.person),
                     SizedBox(width: 8),
-                    Text('Profile'),
+                    Text(AppLocalizations.of(context)!.profile),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings),
+                    SizedBox(width: 8),
+                    Text(AppLocalizations.of(context)!.settings),
                   ],
                 ),
               ),
@@ -1065,7 +1205,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                   children: [
                     Icon(Icons.logout),
                     SizedBox(width: 8),
-                    Text('Logout'),
+                    Text(AppLocalizations.of(context)!.logout),
                   ],
                 ),
               ),
@@ -1073,14 +1213,20 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
           ),
         ],
       ),
-      body: _pages[_currentIndex],
+      body: pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.details), label: 'Details'),
+        items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: AppLocalizations.of(context)!.home,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.details),
+            label: AppLocalizations.of(context)!.details,
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.pie_chart),
-            label: 'Analysis',
+            label: AppLocalizations.of(context)!.analysis,
           ),
         ],
         currentIndex: _currentIndex,
@@ -1123,7 +1269,10 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => LoginPage()),
+      MaterialPageRoute(
+        builder: (context) =>
+            LoginPage(onLanguageChanged: widget.onLanguageChanged),
+      ),
     );
   }
 }
