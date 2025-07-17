@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'auth/login_page.dart';
 import 'profile_page.dart';
 import 'notes_page.dart';
+import 'settings_page.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -36,15 +37,51 @@ void main() {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  static _MyAppState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_MyAppState>();
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isDarkMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    });
+  }
+
+  void updateTheme(bool isDarkMode) {
+    setState(() {
+      _isDarkMode = isDarkMode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Daily Expense',
-      debugShowCheckedModeBanner: false,
+      title: 'Daily Expenditure',
+      theme: ThemeData(
+        brightness: Brightness.light,
+        primarySwatch: Colors.blue,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.blue,
+      ),
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       home: AuthWrapper(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -812,7 +849,9 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                                     text: '${item['category']}: ',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.black,
+                                      color: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge?.color,
                                     ),
                                   ),
                                 ],
@@ -821,7 +860,11 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                             SizedBox(height: 4),
                             Text(
                               '${item['name']}',
-                              style: TextStyle(color: Colors.black),
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color,
+                              ),
                             ),
                             SizedBox(height: 4),
                             Container(
@@ -868,7 +911,9 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                                 '₹${item['price'].toStringAsFixed(2)}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black,
+                                  color: Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge?.color,
                                 ),
                               ),
                               SizedBox(width: 8),
@@ -1037,6 +1082,15 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
       appBar: AppBar(
         title: Text('Daily Expenditure-c'),
         actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsPage()),
+              );
+            },
+          ),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'logout') {
