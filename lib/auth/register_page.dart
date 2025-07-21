@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 
 class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
+
   @override
   _RegisterPageState createState() => _RegisterPageState();
 }
@@ -55,7 +57,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
       // Check if user already exists
       bool userExists = await _checkUserExists(username, email);
-      
+
       if (userExists) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -93,7 +95,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
       // Navigate back to login
       Navigator.pop(context);
-
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -122,7 +123,9 @@ class _RegisterPageState extends State<RegisterPage> {
           padding: EdgeInsets.all(24.0),
           child: Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Padding(
               padding: EdgeInsets.all(32.0),
               child: Form(
@@ -130,11 +133,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.person_add,
-                      size: 60,
-                      color: Colors.blue,
-                    ),
+                    Icon(Icons.person_add, size: 60, color: Colors.blue),
                     SizedBox(height: 16),
                     Text(
                       'Create Account',
@@ -148,7 +147,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextFormField(
                       controller: _usernameController,
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_]')),
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[a-zA-Z0-9_]'),
+                        ),
                       ],
                       decoration: InputDecoration(
                         labelText: 'Username',
@@ -208,7 +209,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         if (value == null || value.trim().isEmpty) {
                           return 'Please enter email';
                         }
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+                        if (!RegExp(
+                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                        ).hasMatch(value.trim())) {
                           return 'Please enter valid email';
                         }
                         return null;
@@ -222,7 +225,11 @@ class _RegisterPageState extends State<RegisterPage> {
                         labelText: 'Password',
                         prefixIcon: Icon(Icons.lock),
                         suffixIcon: IconButton(
-                          icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
                           onPressed: () {
                             setState(() {
                               _isPasswordVisible = !_isPasswordVisible;
@@ -252,10 +259,15 @@ class _RegisterPageState extends State<RegisterPage> {
                         labelText: 'Confirm Password',
                         prefixIcon: Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off),
+                          icon: Icon(
+                            _isConfirmPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
                           onPressed: () {
                             setState(() {
-                              _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                              _isConfirmPasswordVisible =
+                                  !_isConfirmPasswordVisible;
                             });
                           },
                         ),
@@ -290,7 +302,10 @@ class _RegisterPageState extends State<RegisterPage> {
                             ? CircularProgressIndicator(color: Colors.white)
                             : Text(
                                 'Register',
-                                style: TextStyle(fontSize: 18, color: Colors.white),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                ),
                               ),
                       ),
                     ),

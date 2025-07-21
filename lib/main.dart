@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'dart:async';
 import 'package:excel/excel.dart' hide TextStyle, TextSpan;
 import 'package:path_provider/path_provider.dart';
@@ -15,6 +14,7 @@ import 'profile_page.dart';
 import 'notes_page.dart';
 import 'settings_page.dart';
 import 'l10n/app_localizations.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -88,11 +88,19 @@ class _MyAppState extends State<MyApp> {
         brightness: Brightness.light,
         primarySwatch: Colors.blue,
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
+        ),
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         primarySwatch: Colors.blue,
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
       ),
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -150,7 +158,31 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.account_balance_wallet,
+                size: 500,
+                color: Colors.green,
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Daily Expense',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+              SizedBox(height: 40),
+              CircularProgressIndicator(color: Colors.green),
+            ],
+          ),
+        ),
+      );
     }
 
     return _isLoggedIn
@@ -198,6 +230,18 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   double _totalAmount = 0.0;
   final List<int> _selectedIndexes = [];
   bool _isSelectionMode = false;
+
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  Future<void> _playAddSound() async {
+    try {
+      await _audioPlayer.play(
+        AssetSource('WhatsApp Audio 2025-07-17 at 8.34.16 PM.aac'),
+      );
+    } catch (e) {
+      print('Error playing sound: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -277,6 +321,8 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   }
 
   void _addItem() {
+    _playAddSound(); // Play sound first
+
     String name = _nameController.text.trim();
     double? price = double.tryParse(_priceController.text.trim());
 
@@ -741,13 +787,6 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             // Make Add button bigger
             ElevatedButton(
               onPressed: _addItem,
-              child: Text(
-                AppLocalizations.of(context)!.add,
-                style: TextStyle(
-                  fontSize: 18, // Larger text
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
               style: ElevatedButton.styleFrom(
                 minimumSize: Size(double.infinity, 60), // Taller button
                 padding: EdgeInsets.symmetric(vertical: 15), // More padding
@@ -759,6 +798,13 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                   borderRadius: BorderRadius.circular(
                     8.0,
                   ), // Optional: slightly rounded corners
+                ),
+              ),
+              child: Text(
+                AppLocalizations.of(context)!.add,
+                style: TextStyle(
+                  fontSize: 18, // Larger text
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -892,18 +938,24 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                         title: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            RichText(
-                              text: TextSpan(
+                            Text.rich(
+                              TextSpan(
                                 children: [
                                   TextSpan(
                                     text: '${item['category']}: ',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color:
-                                          Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? Colors.white
-                                          : Colors.black,
+                                      color: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge?.color,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '${item['name']}',
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge?.color,
                                     ),
                                   ),
                                 ],
@@ -936,14 +988,12 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                                 '${item['paymentMethod'] ?? 'Cash'}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: item['paymentMethod'] == 'Cash'
-                                      ? (Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? Colors.green.shade300
-                                            : Colors.green.shade700)
-                                      : (Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? Colors.blue.shade300
+                                  color:
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.black
+                                      : (item['paymentMethod'] == 'Cash'
+                                            ? Colors.green.shade700
                                             : Colors.blue.shade700),
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -998,35 +1048,58 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                   ),
           ),
           SizedBox(height: 10),
-          Text(
-            '${AppLocalizations.of(context)!.totalAmount}: ₹${_totalAmount.toStringAsFixed(2)}',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          if (_isSelectionMode)
-            Row(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ElevatedButton.icon(
-                  icon: Icon(Icons.delete),
-                  label: Text(AppLocalizations.of(context)!.deleteSelected),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 174, 158, 156),
+                Container(
+                  constraints: BoxConstraints(maxWidth: 200),
+                  child: Text(
+                    'Total Amount: ₹${_totalAmount.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      // Remove items in reverse order to avoid index issues
-                      _selectedIndexes.sort((a, b) => b.compareTo(a));
-                      for (var idx in _selectedIndexes) {
-                        _totalAmount -= _items[idx]['price'];
-                        _items.removeAt(idx);
-                      }
-                      _selectedIndexes.clear();
-                      _isSelectionMode = false;
-                      _saveItems();
-                    });
-                  },
                 ),
+                if (_isSelectionMode)
+                  Container(
+                    margin: EdgeInsets.only(left: 8),
+                    child: ElevatedButton.icon(
+                      icon: Icon(Icons.delete, size: 16),
+                      label: Text('Delete', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(
+                          255,
+                          174,
+                          158,
+                          156,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _selectedIndexes.sort((a, b) => b.compareTo(a));
+                          for (var idx in _selectedIndexes) {
+                            _totalAmount -= _items[idx]['price'];
+                            _items.removeAt(idx);
+                          }
+                          _selectedIndexes.clear();
+                          _isSelectionMode = false;
+                          _saveItems();
+                        });
+                      },
+                    ),
+                  ),
               ],
             ),
+          ),
         ],
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 const List<String> _paymentMethods = ['Payment Method', 'Cash', 'Online'];
 
@@ -28,7 +29,19 @@ class _BorrowPageState extends State<BorrowPage> {
 
   // Selection mode variables for main list
   bool _isSelectionMode = false;
-  List<String> _selectedPersons = [];
+  final List<String> _selectedPersons = [];
+
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  Future<void> _playAddSound() async {
+    try {
+      await _audioPlayer.play(
+        AssetSource('WhatsApp Audio 2025-07-17 at 8.34.16 PM.aac'),
+      );
+    } catch (e) {
+      print('Error playing sound: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -100,6 +113,8 @@ class _BorrowPageState extends State<BorrowPage> {
   }
 
   void _addBorrowItem() {
+    _playAddSound(); // Play sound first
+
     String firstName = _firstNameController.text.trim();
     double? amount = double.tryParse(_amountController.text.trim());
     String description = _descriptionController.text.trim();

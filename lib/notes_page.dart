@@ -35,6 +35,8 @@ class Note {
 }
 
 class NotesPage extends StatefulWidget {
+  const NotesPage({super.key});
+
   @override
   _NotesPageState createState() => _NotesPageState();
 }
@@ -52,19 +54,21 @@ class _NotesPageState extends State<NotesPage> {
   Future<void> _loadNotes() async {
     final prefs = await SharedPreferences.getInstance();
     String? currentUserJson = prefs.getString('currentUser');
-    
+
     if (currentUserJson != null) {
       Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
       String userId = currentUser['username'];
-      
+
       List<String>? notesJson = prefs.getStringList('notes_$userId');
-      
+
       if (notesJson != null) {
         setState(() {
           _notes = notesJson
               .map((noteStr) => Note.fromJson(jsonDecode(noteStr)))
               .toList();
-          _notes.sort((a, b) => b.createdAt.compareTo(a.createdAt)); // Sort by newest first
+          _notes.sort(
+            (a, b) => b.createdAt.compareTo(a.createdAt),
+          ); // Sort by newest first
           _isLoading = false;
         });
       } else {
@@ -83,15 +87,15 @@ class _NotesPageState extends State<NotesPage> {
   Future<void> _saveNotes() async {
     final prefs = await SharedPreferences.getInstance();
     String? currentUserJson = prefs.getString('currentUser');
-    
+
     if (currentUserJson != null) {
       Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
       String userId = currentUser['username'];
-      
+
       List<String> notesJson = _notes
           .map((note) => jsonEncode(note.toJson()))
           .toList();
-      
+
       await prefs.setStringList('notes_$userId', notesJson);
     }
   }
@@ -124,10 +128,8 @@ class _NotesPageState extends State<NotesPage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => NoteEditorPage(
-          isNewNote: false,
-          note: _notes[index],
-        ),
+        builder: (context) =>
+            NoteEditorPage(isNewNote: false, note: _notes[index]),
       ),
     );
 
@@ -170,89 +172,78 @@ class _NotesPageState extends State<NotesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Notes'),
-      ),
+      appBar: AppBar(title: Text('Notes')),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : _notes.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.note_alt_outlined,
-                        size: 80,
-                        color: Colors.grey[400],
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'No notes yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Tap the + button to create a note',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.note_alt_outlined,
+                    size: 80,
+                    color: Colors.grey[400],
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _notes.length,
-                  itemBuilder: (context, index) {
-                    final note = _notes[index];
-                    return Card(
-                      margin: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        title: Text(
-                          note.title.isEmpty ? 'Untitled Note' : note.title,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (note.content.isNotEmpty)
-                              Padding(
-                                padding: EdgeInsets.only(top: 4, bottom: 8),
-                                child: Text(
-                                  note.content.length > 100
-                                      ? '${note.content.substring(0, 100)}...'
-                                      : note.content,
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                              ),
-                            Text(
-                              _formatDateTime(note.createdAt),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No notes yet',
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Tap the + button to create a note',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: _notes.length,
+              itemBuilder: (context, index) {
+                final note = _notes[index];
+                return Card(
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: ListTile(
+                    title: Text(
+                      note.title.isEmpty ? 'Untitled Note' : note.title,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (note.content.isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(top: 4, bottom: 8),
+                            child: Text(
+                              note.content.length > 100
+                                  ? '${note.content.substring(0, 100)}...'
+                                  : note.content,
+                              style: TextStyle(fontSize: 14),
                             ),
-                          ],
+                          ),
+                        Text(
+                          _formatDateTime(note.createdAt),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
                         ),
-                        onTap: () => _editNote(index),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _deleteNote(index),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                    onTap: () => _editNote(index),
+                    trailing: IconButton(
+                      icon: Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteNote(index),
+                    ),
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addNote,
-        child: Icon(Icons.add),
         tooltip: 'Add Note',
+        child: Icon(Icons.add),
       ),
     );
   }
@@ -262,13 +253,14 @@ class _NotesPageState extends State<NotesPage> {
     String month = dateTime.month.toString().padLeft(2, '0');
     String day = dateTime.day.toString().padLeft(2, '0');
 
-    String hour = (dateTime.hour > 12
-            ? dateTime.hour - 12
-            : dateTime.hour == 0
+    String hour =
+        (dateTime.hour > 12
+                ? dateTime.hour - 12
+                : dateTime.hour == 0
                 ? 12
                 : dateTime.hour)
-        .toString()
-        .padLeft(2, '0');
+            .toString()
+            .padLeft(2, '0');
     String minute = dateTime.minute.toString().padLeft(2, '0');
     String period = dateTime.hour >= 12 ? 'PM' : 'AM';
 
@@ -280,7 +272,8 @@ class NoteEditorPage extends StatefulWidget {
   final bool isNewNote;
   final Note note;
 
-  NoteEditorPage({
+  const NoteEditorPage({
+    super.key,
     required this.isNewNote,
     required this.note,
   });
@@ -330,7 +323,9 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
           context: context,
           builder: (context) => AlertDialog(
             title: Text('Discard changes?'),
-            content: Text('You have unsaved changes. Are you sure you want to discard them?'),
+            content: Text(
+              'You have unsaved changes. Are you sure you want to discard them?',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -362,9 +357,11 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
                   id: widget.note.id,
                   title: _titleController.text.trim(),
                   content: _contentController.text.trim(),
-                  createdAt: widget.isNewNote ? DateTime.now() : widget.note.createdAt,
+                  createdAt: widget.isNewNote
+                      ? DateTime.now()
+                      : widget.note.createdAt,
                 );
-                
+
                 // Return the updated note to the previous screen
                 Navigator.pop(context, updatedNote);
               },
@@ -382,10 +379,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 8),
                 ),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               Divider(),
               Expanded(

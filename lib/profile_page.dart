@@ -309,7 +309,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     SizedBox(height: 40),
 
                     // Version info card has been moved to settings page
-                    Container(
+                    SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         icon: Icon(Icons.delete_forever),

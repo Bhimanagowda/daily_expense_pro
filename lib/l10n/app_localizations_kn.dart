@@ -21,10 +21,10 @@ class AppLocalizationsKn extends AppLocalizations {
   String get charts => 'ಚಾರ್ಟ್‌ಗಳು';
 
   @override
-  String get borrow => 'ಸಾಲ';
+  String get borrow => 'ಸಾಲ ಪಡೆದಿದ್ದು';
 
   @override
-  String get lend => 'ಸಾಲ ಕೊಡು';
+  String get lend => 'ಸಾಲ ಕೊಟ್ಟಿದ್ದು';
 
   @override
   String get profile => 'ಪ್ರೊಫೈಲ್';
@@ -162,7 +162,7 @@ class AppLocalizationsKn extends AppLocalizations {
   String get items => 'ವಸ್ತುಗಳು';
 
   @override
-  String get downloadWithDateRange => 'ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯೊಂದಿಗೆ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ';
+  String get downloadWithDateRange => 'ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ';
 
   @override
   String get noItemsAdded => 'ಯಾವುದೇ ವಸ್ತುಗಳನ್ನು ಸೇರಿಸಲಾಗಿಲ್ಲ.';

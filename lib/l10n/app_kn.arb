@@ -3,8 +3,8 @@
   "home": "ಮುಖ್ಯ",
   "details": "ವಿವರಗಳು",
   "charts": "ಚಾರ್ಟ್‌ಗಳು",
-  "borrow": "ಸಾಲ",
-  "lend": "ಸಾಲ ಕೊಡು",
+  "borrow": "ಸಾಲ ಪಡೆದಿದ್ದು",
+  "lend": "ಸಾಲ ಕೊಟ್ಟಿದ್ದು",
   "profile": "ಪ್ರೊಫೈಲ್",
   "notes": "ಟಿಪ್ಪಣಿಗಳು",
   "settings": "ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
@@ -50,7 +50,7 @@
   "logout": "ಲಾಗ್ ಔಟ್",
   "totalAmount": "ಒಟ್ಟು ಮೊತ್ತ",
   "items": "ವಸ್ತುಗಳು",
-  "downloadWithDateRange": "ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯೊಂದಿಗೆ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+  "downloadWithDateRange": "ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
   "noItemsAdded": "ಯಾವುದೇ ವಸ್ತುಗಳನ್ನು ಸೇರಿಸಲಾಗಿಲ್ಲ.",
   "deleteSelected": "ಆಯ್ಕೆಮಾಡಿದವುಗಳನ್ನು ಅಳಿಸಿ",
   "updateItem": "ವಸ್ತುವನ್ನು ನವೀಕರಿಸಿ",
@@ -76,3 +76,5 @@
   "excelFileDownloaded": "ಎಕ್ಸೆಲ್ ಫೈಲ್ ಅನ್ನು {filePath} ಗೆ ಡೌನ್‌ಲೋಡ್ ಮಾಡಲಾಗಿದೆ",
   "datetime": "ದಿನಾಂಕ ಸಮಯ"
 }
+
+

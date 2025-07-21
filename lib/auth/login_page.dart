@@ -81,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
           MaterialPageRoute(
             builder: (context) => ExpenditureScreen(
               onLanguageChanged: widget.onLanguageChanged,
-              onThemeChanged: widget.onThemeChanged ?? (bool isDark) {},
+              onThemeChanged: widget.onThemeChanged ?? (bool value) {},
             ),
           ),
         );
