@@ -180,7 +180,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get analysis => 'Analysis';
 
   @override
-  String get dailyExpenditure => 'Daily Expenditure';
+  String get dailyExpenditure => 'Daily Expenditure-c';
 
   @override
   String get enterFileName => 'Enter file name';

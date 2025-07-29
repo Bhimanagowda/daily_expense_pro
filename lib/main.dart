@@ -15,6 +15,7 @@ import 'notes_page.dart';
 import 'settings_page.dart';
 import 'l10n/app_localizations.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'cost_split_page.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -687,19 +688,31 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                     color: Colors.grey[700],
                   ),
                 ),
-                IconButton(
-                  icon: Icon(
-                    Icons.note_alt,
-                    size: 36, // Larger icon
-                    color: Colors.blue,
-                  ),
-                  tooltip: 'Notes',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => NotesPage()),
-                    );
-                  },
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.group, size: 36, color: Colors.green),
+                      tooltip: 'Share Bill',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CostSplitPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.note_alt, size: 36, color: Colors.blue),
+                      tooltip: 'Notes',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => NotesPage()),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
