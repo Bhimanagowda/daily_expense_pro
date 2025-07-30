@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'group_detail_page.dart';
 import 'individual_share_bill.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 // Add the missing constants
 const List<String> _categories = [
@@ -58,6 +59,8 @@ class Group {
 }
 
 class CostSplitPage extends StatefulWidget {
+  const CostSplitPage({super.key});
+
   @override
   _CostSplitPageState createState() => _CostSplitPageState();
 }
@@ -69,6 +72,15 @@ class _CostSplitPageState extends State<CostSplitPage> {
   String _selectedCategory = _categories[0];
   String _selectedPaymentMethod = _paymentMethods[0];
   String? _selectedGroupId;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  Future<void> _playDeleteSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('mixkit-censorship-beep-1082.wav'));
+    } catch (e) {
+      print('Error playing delete sound: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -278,12 +290,13 @@ class _CostSplitPageState extends State<CostSplitPage> {
             child: Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               setState(() {
                 _groups.removeWhere((g) => g.id == group.id);
               });
               _saveGroups();
               Navigator.pop(context);
+              await _playDeleteSound();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Group "${group.name}" deleted'),
@@ -303,7 +316,7 @@ class _CostSplitPageState extends State<CostSplitPage> {
 class CreateGroupDialog extends StatefulWidget {
   final Function(Group) onGroupCreated;
 
-  CreateGroupDialog({required this.onGroupCreated});
+  const CreateGroupDialog({super.key, required this.onGroupCreated});
 
   @override
   _CreateGroupDialogState createState() => _CreateGroupDialogState();
@@ -312,7 +325,7 @@ class CreateGroupDialog extends StatefulWidget {
 class _CreateGroupDialogState extends State<CreateGroupDialog> {
   final TextEditingController _groupNameController = TextEditingController();
   final TextEditingController _memberController = TextEditingController();
-  List<String> _members = [];
+  final List<String> _members = [];
 
   void _addMember() {
     String member = _memberController.text.trim();

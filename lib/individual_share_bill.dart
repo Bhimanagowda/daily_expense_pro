@@ -4,16 +4,16 @@ import 'cost_split_page.dart';
 class IndividualShareBillPage extends StatelessWidget {
   final Group group;
 
-  IndividualShareBillPage({required this.group});
+  const IndividualShareBillPage({super.key, required this.group});
 
   Map<String, double> _calculateIndividualAmounts() {
     Map<String, double> amounts = {};
-    
+
     // Initialize all members with 0
     for (String member in group.members) {
       amounts[member] = 0.0;
     }
-    
+
     // Calculate total amount each member owes
     for (var expense in group.expenses) {
       double splitAmount = expense['splitAmount'] as double;
@@ -21,14 +21,14 @@ class IndividualShareBillPage extends StatelessWidget {
         amounts[member] = amounts[member]! + splitAmount;
       }
     }
-    
+
     return amounts;
   }
 
   @override
   Widget build(BuildContext context) {
     final individualAmounts = _calculateIndividualAmounts();
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Individual Share Bill'),
@@ -57,33 +57,27 @@ class IndividualShareBillPage extends StatelessWidget {
                     SizedBox(height: 8),
                     Text(
                       'Total Expenses: ${group.expenses.length}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               ),
             ),
             SizedBox(height: 20),
-            
+
             Text(
               'Individual Share Details:',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 16),
-            
+
             Expanded(
               child: ListView.builder(
                 itemCount: group.members.length,
                 itemBuilder: (context, index) {
                   String member = group.members[index];
                   double amount = individualAmounts[member] ?? 0.0;
-                  
+
                   return Card(
                     margin: EdgeInsets.only(bottom: 12),
                     elevation: 2,

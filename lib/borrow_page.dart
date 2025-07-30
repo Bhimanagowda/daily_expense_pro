@@ -43,6 +43,16 @@ class _BorrowPageState extends State<BorrowPage> {
     }
   }
 
+  Future<void> _playDeleteSound() async {
+    try {
+      await _audioPlayer.play(
+        AssetSource('mixkit-censorship-beep-1082.wav'),
+      );
+    } catch (e) {
+      print('Error playing delete sound: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -155,7 +165,7 @@ class _BorrowPageState extends State<BorrowPage> {
     }
   }
 
-  void _deleteTransaction(int transactionIndex) {
+  void _deleteTransaction(int transactionIndex) async {
     final item = _borrowList[transactionIndex];
     final bool isReturn = item['type'] == 'return';
     final double amount = item['amount'];
@@ -167,6 +177,9 @@ class _BorrowPageState extends State<BorrowPage> {
       _borrowList.removeAt(transactionIndex);
     });
     _saveBorrowData();
+
+    // Play delete sound
+    await _playDeleteSound();
 
     // Replace yellow/black warning with a simple green confirmation
     ScaffoldMessenger.of(context).showSnackBar(
@@ -279,7 +292,7 @@ class _BorrowPageState extends State<BorrowPage> {
     );
   }
 
-  void _deleteSelectedPersons() {
+  void _deleteSelectedPersons() async {
     // Create a copy of the selected persons for the confirmation message
     List<String> selectedPersonsCopy = List.from(_selectedPersons);
 
@@ -331,6 +344,9 @@ class _BorrowPageState extends State<BorrowPage> {
 
       // Save the updated data
       _saveBorrowData();
+
+      // Play delete sound
+      await _playDeleteSound();
 
       // Show confirmation with green background instead of yellow/black
       ScaffoldMessenger.of(context).showSnackBar(
@@ -644,7 +660,49 @@ class _BorrowPageState extends State<BorrowPage> {
           SizedBox(height: 20),
 
           ElevatedButton.icon(
-            onPressed: _addBorrowItem,
+            onPressed: () async {
+              String firstName = _firstNameController.text.trim();
+              double? amount = double.tryParse(_amountController.text.trim());
+              String description = _descriptionController.text.trim();
+
+              if (firstName.isNotEmpty &&
+                  amount != null &&
+                  _selectedPaymentMethod != 'Payment Method') {
+                setState(() {
+                  _borrowList.add({
+                    'firstName': firstName,
+                    'fullName': firstName,
+                    'firstNameLower': firstName.toLowerCase(),
+                    'amount': amount,
+                    'description': description,
+                    'paymentMethod': _selectedPaymentMethod,
+                    'time': DateTime.now(),
+                  });
+
+                  _totalBorrowAmount += amount;
+                  _firstNameController.clear();
+                  _amountController.clear();
+                  _descriptionController.clear();
+                  _selectedPaymentMethod = _paymentMethods[0];
+                });
+                await _saveBorrowData();
+
+                // Play sound after successful add
+                await _playAddSound();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added $firstName to Borrow list'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              } else if (_selectedPaymentMethod == 'Payment Method') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please select a payment method')),
+                );
+              }
+            },
             icon: Icon(Icons.add),
             label: Text('Add Borrow'),
             style: ElevatedButton.styleFrom(

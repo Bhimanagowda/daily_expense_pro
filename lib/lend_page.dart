@@ -43,6 +43,16 @@ class _LendPageState extends State<LendPage> {
     }
   }
 
+  Future<void> _playDeleteSound() async {
+    try {
+      await _audioPlayer.play(
+        AssetSource('mixkit-censorship-beep-1082.wav'),
+      );
+    } catch (e) {
+      print('Error playing delete sound: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -155,7 +165,7 @@ class _LendPageState extends State<LendPage> {
     }
   }
 
-  void _deleteTransaction(int transactionIndex) {
+  void _deleteTransaction(int transactionIndex) async {
     final item = _lendList[transactionIndex];
     final bool isReturn = item['type'] == 'return';
     final double amount = item['amount'];
@@ -167,6 +177,9 @@ class _LendPageState extends State<LendPage> {
       _lendList.removeAt(transactionIndex);
     });
     _saveLendData();
+
+    // Play delete sound
+    await _playDeleteSound();
 
     // Replace yellow/black warning with a simple green confirmation
     ScaffoldMessenger.of(context).showSnackBar(
@@ -279,7 +292,7 @@ class _LendPageState extends State<LendPage> {
     );
   }
 
-  void _deleteSelectedPersons() {
+  void _deleteSelectedPersons() async {
     // Create a copy of the selected persons for the confirmation message
     List<String> selectedPersonsCopy = List.from(_selectedPersons);
 
@@ -331,6 +344,9 @@ class _LendPageState extends State<LendPage> {
 
       // Save the updated data
       _saveLendData();
+
+      // Play delete sound
+      await _playDeleteSound();
 
       // Show confirmation with green background instead of yellow/black
       ScaffoldMessenger.of(context).showSnackBar(
@@ -615,7 +631,49 @@ class _LendPageState extends State<LendPage> {
           SizedBox(height: 20),
 
           ElevatedButton.icon(
-            onPressed: _addLendItem,
+            onPressed: () async {
+              String firstName = _firstNameController.text.trim();
+              double? amount = double.tryParse(_amountController.text.trim());
+              String description = _descriptionController.text.trim();
+
+              if (firstName.isNotEmpty &&
+                  amount != null &&
+                  _selectedPaymentMethod != 'Payment Method') {
+                setState(() {
+                  _lendList.add({
+                    'firstName': firstName,
+                    'fullName': firstName,
+                    'firstNameLower': firstName.toLowerCase(),
+                    'amount': amount,
+                    'description': description,
+                    'paymentMethod': _selectedPaymentMethod,
+                    'time': DateTime.now(),
+                  });
+
+                  _totalLendAmount += amount;
+                  _firstNameController.clear();
+                  _amountController.clear();
+                  _descriptionController.clear();
+                  _selectedPaymentMethod = _paymentMethods[0];
+                });
+                await _saveLendData();
+
+                // Play sound after successful add
+                await _playAddSound();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added $firstName to Lend list'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              } else if (_selectedPaymentMethod == 'Payment Method') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Please select a payment method')),
+                );
+              }
+            },
             icon: Icon(Icons.add),
             label: Text('Add Lend'),
             style: ElevatedButton.styleFrom(

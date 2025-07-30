@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'cost_split_page.dart';
 import 'individual_share_bill.dart';
+import 'package:flutter/services.dart';
 
 const List<String> _categories = [
   'Categories',
@@ -21,7 +23,11 @@ class GroupDetailPage extends StatefulWidget {
   final Group group;
   final Function(Group) onGroupUpdated;
 
-  GroupDetailPage({required this.group, required this.onGroupUpdated});
+  const GroupDetailPage({
+    super.key,
+    required this.group,
+    required this.onGroupUpdated,
+  });
 
   @override
   _GroupDetailPageState createState() => _GroupDetailPageState();
@@ -37,6 +43,15 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
   int? _selectedMembersCount;
 
   List<Map<String, dynamic>> _settlementState = [];
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  Future<void> _playDeleteSound() async {
+    try {
+      await _audioPlayer.play(AssetSource('mixkit-censorship-beep-1082.wav'));
+    } catch (e) {
+      print('Error playing delete sound: $e');
+    }
+  }
 
   @override
   void initState() {
@@ -47,12 +62,12 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
     _selectedMembers = List.from(widget.group.members); // default: all
   }
 
-  void _addExpense() {
+  Future<void> _addExpense() async {
     String name = _nameController.text.trim();
     double? price = double.tryParse(_priceController.text.trim());
 
     // Validate name: only alphabets and spaces
-    final nameRegExp = RegExp(r'^[A-Za-z ]+$');
+    final nameRegExp = RegExp(r'^[A-Za-z ]+$'); // Only alphabets and spaces
     String errorMessage = '';
 
     if (name.isEmpty) {
@@ -104,6 +119,12 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
     });
 
     widget.onGroupUpdated(widget.group);
+    // ...existing code...
+    final player = AudioPlayer();
+    await player.play(
+      AssetSource('WhatsApp Audio 2025-07-17 at 8.34.16 PM.aac'),
+    );
+    // ...existing code...
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -368,6 +389,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
               });
               widget.onGroupUpdated(widget.group);
               Navigator.pop(context);
+              _playDeleteSound();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('$member removed from group'),
@@ -600,7 +622,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                             fontSize: 14,
                             color:
                                 Theme.of(context).brightness == Brightness.dark
-                                ? Colors.black
+                                ? Colors.orange
                                 : Colors.black87,
                           ),
                           children: [
@@ -854,6 +876,9 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                         labelText: 'Expense Name',
                         border: OutlineInputBorder(),
                       ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z ]')),
+                      ],
                     ),
                     SizedBox(height: 12),
                     TextField(
@@ -869,11 +894,11 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
 
                     ElevatedButton(
                       onPressed: _addExpense,
-                      child: Text('Add Expense'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         minimumSize: Size(double.infinity, 45),
                       ),
+                      child: Text('Add Expense'),
                     ),
                   ],
                 ),
@@ -898,107 +923,15 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
               SizedBox(height: 20),
             ],
 
-            // Individual Share Details Section
-            if (widget.group.expenses.isNotEmpty) ...[
-              Text(
-                'Individual Share Details',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Card(
-                elevation: 2,
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    children: widget.group.members.map((member) {
-                      // Calculate total amount for this member
-                      double totalAmount = 0.0;
-                      for (var expense in widget.group.expenses) {
-                        // Check if this member is excluded from this expense
-                        List<dynamic> excludedMembers =
-                            expense['excludedMembers'] ?? [];
-                        if (!excludedMembers.contains(member)) {
-                          totalAmount += expense['splitAmount'] as double;
-                        }
-                      }
-
-                      return Container(
-                        margin: EdgeInsets.only(bottom: 12),
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: InkWell(
-                          onLongPress: () => _showMemberOptions(member),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: Colors.blue,
-                                radius: 20,
-                                child: Text(
-                                  member[0].toUpperCase(),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  member,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color:
-                                        Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.black
-                                        : null,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.green),
-                                ),
-                                child: Text(
-                                  '₹${totalAmount.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-            ],
-
             // Group Expenses Section
             Text(
-              'Group Expenses',
+              'Payment History',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
 
             widget.group.expenses.isEmpty
-                ? Container(
+                ? SizedBox(
                     height: 100,
                     child: Center(
                       child: Text(
@@ -1044,6 +977,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                                             });
                                             widget.onGroupUpdated(widget.group);
                                             Navigator.pop(context);
+                                            _playDeleteSound();
                                             ScaffoldMessenger.of(
                                               context,
                                             ).showSnackBar(
@@ -1124,7 +1058,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                                         ],
                                       ),
                                     );
-                                  }).toList(),
+                                  }),
                                 ],
                               ),
                             ),

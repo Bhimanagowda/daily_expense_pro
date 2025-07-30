@@ -244,6 +244,16 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     }
   }
 
+  Future<void> _playDeleteSound() async {
+    try {
+      await _audioPlayer.play(
+        AssetSource('mixkit-censorship-beep-1082.wav'),
+      );
+    } catch (e) {
+      print('Error playing delete sound: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -321,9 +331,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     setState(() {});
   }
 
-  void _addItem() {
-    _playAddSound(); // Play sound first
-
+  void _addItem() async {
     String name = _nameController.text.trim();
     double? price = double.tryParse(_priceController.text.trim());
 
@@ -333,7 +341,6 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
         _selectedPaymentMethod != 'Payment Method') {
       setState(() {
         _items.insert(0, {
-          // Insert at index 0 (top)
           'category': _selectedCategory,
           'name': name,
           'price': price,
@@ -341,7 +348,6 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
           'time': DateTime.now(),
         });
 
-        // Sort by time descending (newest first)
         _items.sort(
           (a, b) => (b['time'] as DateTime).compareTo(a['time'] as DateTime),
         );
@@ -349,9 +355,12 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
         _totalAmount += price;
         _nameController.clear();
         _priceController.clear();
-        _currentIndex = 1; // Switch to Details tab after adding
+        _currentIndex = 1;
       });
-      _saveItems();
+      await _saveItems();
+
+      // Play sound after successful add
+      await _playAddSound();
     } else if (_selectedCategory == 'Categories') {
       ScaffoldMessenger.of(
         context,
@@ -1096,7 +1105,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                           vertical: 4,
                         ),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         setState(() {
                           _selectedIndexes.sort((a, b) => b.compareTo(a));
                           for (var idx in _selectedIndexes) {
@@ -1107,6 +1116,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                           _isSelectionMode = false;
                           _saveItems();
                         });
+                        await _playDeleteSound();
                       },
                     ),
                   ),

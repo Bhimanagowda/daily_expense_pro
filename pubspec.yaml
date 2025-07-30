@@ -39,7 +39,7 @@ dependencies:
   excel: ^4.0.6
   path_provider: ^2.1.4
   image_picker: ^1.1.2
-  audioplayers: ^5.0.0
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +76,7 @@ flutter:
   assets:
     - assets/
     - assets/WhatsApp Audio 2025-07-17 at 8.34.16 PM.aac
+    - assets/mixkit-censorship-beep-1082.wav
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
