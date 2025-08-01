@@ -316,6 +316,14 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
               setState(() {
                 widget.group.members.add(name);
                 _selectedMembers = List.from(widget.group.members);
+                
+                // Exclude new member from all existing expenses
+                for (var expense in widget.group.expenses) {
+                  expense['excludedMembers'] = expense['excludedMembers'] ?? [];
+                  if (!expense['excludedMembers'].contains(name)) {
+                    expense['excludedMembers'].add(name);
+                  }
+                }
               });
               widget.onGroupUpdated(widget.group);
               Navigator.pop(context);

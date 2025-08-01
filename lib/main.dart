@@ -233,8 +233,6 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   final List<int> _selectedIndexes = [];
   bool _isSelectionMode = false;
 
-
-
   @override
   void initState() {
     super.initState();

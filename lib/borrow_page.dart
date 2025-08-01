@@ -34,12 +34,15 @@ class _BorrowPageState extends State<BorrowPage> {
   bool _isSelectionMode = false;
   final List<String> _selectedPersons = [];
 
-
-
-  Future<void> _sendWhatsAppMessage(String phone, String name, double amount) async {
-    String message = "Hi $name! I have borrowed ₹${amount.toStringAsFixed(2)} from you. I will return it soon. Thanks!";
+  Future<void> _sendWhatsAppMessage(
+    String phone,
+    String name,
+    double amount,
+  ) async {
+    String message =
+        "Hi $name! I have borrowed ₹${amount.toStringAsFixed(2)} from you. I will return it soon. Thanks!";
     String url = "https://wa.me/$phone?text=${Uri.encodeComponent(message)}";
-    
+
     try {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
@@ -656,7 +659,7 @@ class _BorrowPageState extends State<BorrowPage> {
               labelText: 'Phone Number (Optional)',
               border: OutlineInputBorder(),
               hintText: 'Enter phone with country code',
-              prefixText: '+',
+              prefixText: '+91',
             ),
           ),
           SizedBox(height: 10),
