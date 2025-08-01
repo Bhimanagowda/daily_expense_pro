@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'sound_helper.dart';
 import 'cost_split_page.dart';
 import 'individual_share_bill.dart';
 import 'package:flutter/services.dart';
@@ -43,15 +44,6 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
   int? _selectedMembersCount;
 
   List<Map<String, dynamic>> _settlementState = [];
-  final AudioPlayer _audioPlayer = AudioPlayer();
-
-  Future<void> _playDeleteSound() async {
-    try {
-      await _audioPlayer.play(AssetSource('mixkit-censorship-beep-1082.wav'));
-    } catch (e) {
-      print('Error playing delete sound: $e');
-    }
-  }
 
   @override
   void initState() {
@@ -119,12 +111,9 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
     });
 
     widget.onGroupUpdated(widget.group);
-    // ...existing code...
-    final player = AudioPlayer();
-    await player.play(
-      AssetSource('WhatsApp Audio 2025-07-17 at 8.34.16 PM.aac'),
-    );
-    // ...existing code...
+    
+    // Play add sound
+    await SoundHelper.playAddSound();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -389,7 +378,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
               });
               widget.onGroupUpdated(widget.group);
               Navigator.pop(context);
-              _playDeleteSound();
+              SoundHelper.playDeleteSound();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('$member removed from group'),
@@ -977,7 +966,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                                             });
                                             widget.onGroupUpdated(widget.group);
                                             Navigator.pop(context);
-                                            _playDeleteSound();
+                                            SoundHelper.playDeleteSound();
                                             ScaffoldMessenger.of(
                                               context,
                                             ).showSnackBar(

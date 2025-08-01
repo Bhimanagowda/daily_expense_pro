@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'sound_helper.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const List<String> _paymentMethods = ['Payment Method', 'Cash', 'Online'];
 
@@ -22,6 +24,7 @@ class _LendPageState extends State<LendPage> {
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   String _selectedPaymentMethod = _paymentMethods[0];
 
   List<Map<String, dynamic>> _lendList = [];
@@ -31,25 +34,21 @@ class _LendPageState extends State<LendPage> {
   bool _isSelectionMode = false;
   final List<String> _selectedPersons = [];
 
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  Future<void> _sendWhatsAppMessage(
+    String phone,
+    String name,
+    double amount,
+  ) async {
+    String message =
+        "Hi $name! I have give ₹${amount.toStringAsFixed(2)} to you. Please return when convenient. Thanks!";
+    String url = "https://wa.me/$phone?text=${Uri.encodeComponent(message)}";
 
-  Future<void> _playAddSound() async {
     try {
-      await _audioPlayer.play(
-        AssetSource('WhatsApp Audio 2025-07-17 at 8.34.16 PM.aac'),
-      );
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  Future<void> _playDeleteSound() async {
-    try {
-      await _audioPlayer.play(
-        AssetSource('mixkit-censorship-beep-1082.wav'),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('WhatsApp not installed or error: $e')),
       );
-    } catch (e) {
-      print('Error playing delete sound: $e');
     }
   }
 
@@ -122,8 +121,8 @@ class _LendPageState extends State<LendPage> {
     }
   }
 
-  void _addLendItem() {
-    _playAddSound(); // Play sound first
+  void _addLendItem() async {
+    SoundHelper.playAddSound(); // Play sound first
 
     String firstName = _firstNameController.text.trim();
     double? amount = double.tryParse(_amountController.text.trim());
@@ -150,6 +149,13 @@ class _LendPageState extends State<LendPage> {
         _selectedPaymentMethod = _paymentMethods[0];
       });
       _saveLendData();
+
+      // Send WhatsApp message if phone number provided
+      String phone = _phoneController.text.trim();
+      if (phone.isNotEmpty) {
+        await _sendWhatsAppMessage(phone, firstName, amount);
+      }
+      _phoneController.clear();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -179,7 +185,7 @@ class _LendPageState extends State<LendPage> {
     _saveLendData();
 
     // Play delete sound
-    await _playDeleteSound();
+    await SoundHelper.playDeleteSound();
 
     // Replace yellow/black warning with a simple green confirmation
     ScaffoldMessenger.of(context).showSnackBar(
@@ -346,7 +352,7 @@ class _LendPageState extends State<LendPage> {
       _saveLendData();
 
       // Play delete sound
-      await _playDeleteSound();
+      await SoundHelper.playDeleteSound();
 
       // Show confirmation with green background instead of yellow/black
       ScaffoldMessenger.of(context).showSnackBar(
@@ -618,6 +624,18 @@ class _LendPageState extends State<LendPage> {
           SizedBox(height: 10),
 
           TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: 'Phone Number (Optional)',
+              border: OutlineInputBorder(),
+              hintText: 'Enter phone with country code',
+              prefixText: '+91',
+            ),
+          ),
+          SizedBox(height: 10),
+
+          TextField(
             controller: _descriptionController,
             maxLines: 3,
             autocorrect: false,
@@ -631,49 +649,7 @@ class _LendPageState extends State<LendPage> {
           SizedBox(height: 20),
 
           ElevatedButton.icon(
-            onPressed: () async {
-              String firstName = _firstNameController.text.trim();
-              double? amount = double.tryParse(_amountController.text.trim());
-              String description = _descriptionController.text.trim();
-
-              if (firstName.isNotEmpty &&
-                  amount != null &&
-                  _selectedPaymentMethod != 'Payment Method') {
-                setState(() {
-                  _lendList.add({
-                    'firstName': firstName,
-                    'fullName': firstName,
-                    'firstNameLower': firstName.toLowerCase(),
-                    'amount': amount,
-                    'description': description,
-                    'paymentMethod': _selectedPaymentMethod,
-                    'time': DateTime.now(),
-                  });
-
-                  _totalLendAmount += amount;
-                  _firstNameController.clear();
-                  _amountController.clear();
-                  _descriptionController.clear();
-                  _selectedPaymentMethod = _paymentMethods[0];
-                });
-                await _saveLendData();
-
-                // Play sound after successful add
-                await _playAddSound();
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Added $firstName to Lend list'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              } else if (_selectedPaymentMethod == 'Payment Method') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please select a payment method')),
-                );
-              }
-            },
+            onPressed: _addLendItem,
             icon: Icon(Icons.add),
             label: Text('Add Lend'),
             style: ElevatedButton.styleFrom(

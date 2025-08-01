@@ -16,6 +16,7 @@ import 'settings_page.dart';
 import 'l10n/app_localizations.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'cost_split_page.dart';
+import 'sound_helper.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -232,27 +233,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
   final List<int> _selectedIndexes = [];
   bool _isSelectionMode = false;
 
-  final AudioPlayer _audioPlayer = AudioPlayer();
 
-  Future<void> _playAddSound() async {
-    try {
-      await _audioPlayer.play(
-        AssetSource('WhatsApp Audio 2025-07-17 at 8.34.16 PM.aac'),
-      );
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
-
-  Future<void> _playDeleteSound() async {
-    try {
-      await _audioPlayer.play(
-        AssetSource('mixkit-censorship-beep-1082.wav'),
-      );
-    } catch (e) {
-      print('Error playing delete sound: $e');
-    }
-  }
 
   @override
   void initState() {
@@ -360,7 +341,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
       await _saveItems();
 
       // Play sound after successful add
-      await _playAddSound();
+      await SoundHelper.playAddSound();
     } else if (_selectedCategory == 'Categories') {
       ScaffoldMessenger.of(
         context,
@@ -465,7 +446,11 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
             child: Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            onPressed: () async {
+              final player = AudioPlayer();
+              await player.play(AssetSource('radio-103737.mp3'));
+              Navigator.pop(context, controller.text.trim());
+            },
             child: Text('OK'),
           ),
         ],
@@ -1116,7 +1101,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                           _isSelectionMode = false;
                           _saveItems();
                         });
-                        await _playDeleteSound();
+                        await SoundHelper.playDeleteSound();
                       },
                     ),
                   ),

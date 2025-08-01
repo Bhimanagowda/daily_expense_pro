@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'sound_helper.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const List<String> _paymentMethods = ['Payment Method', 'Cash', 'Online'];
 
@@ -22,6 +24,7 @@ class _BorrowPageState extends State<BorrowPage> {
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   String _selectedPaymentMethod = _paymentMethods[0];
 
   List<Map<String, dynamic>> _borrowList = [];
@@ -31,25 +34,18 @@ class _BorrowPageState extends State<BorrowPage> {
   bool _isSelectionMode = false;
   final List<String> _selectedPersons = [];
 
-  final AudioPlayer _audioPlayer = AudioPlayer();
 
-  Future<void> _playAddSound() async {
-    try {
-      await _audioPlayer.play(
-        AssetSource('WhatsApp Audio 2025-07-17 at 8.34.16 PM.aac'),
-      );
-    } catch (e) {
-      print('Error playing sound: $e');
-    }
-  }
 
-  Future<void> _playDeleteSound() async {
+  Future<void> _sendWhatsAppMessage(String phone, String name, double amount) async {
+    String message = "Hi $name! I have borrowed ₹${amount.toStringAsFixed(2)} from you. I will return it soon. Thanks!";
+    String url = "https://wa.me/$phone?text=${Uri.encodeComponent(message)}";
+    
     try {
-      await _audioPlayer.play(
-        AssetSource('mixkit-censorship-beep-1082.wav'),
-      );
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
-      print('Error playing delete sound: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('WhatsApp not installed or error: $e')),
+      );
     }
   }
 
@@ -122,8 +118,8 @@ class _BorrowPageState extends State<BorrowPage> {
     }
   }
 
-  void _addBorrowItem() {
-    _playAddSound(); // Play sound first
+  void _addBorrowItem() async {
+    SoundHelper.playAddSound(); // Play sound first
 
     String firstName = _firstNameController.text.trim();
     double? amount = double.tryParse(_amountController.text.trim());
@@ -150,6 +146,13 @@ class _BorrowPageState extends State<BorrowPage> {
         _selectedPaymentMethod = _paymentMethods[0];
       });
       _saveBorrowData();
+
+      // Send WhatsApp message if phone number provided
+      String phone = _phoneController.text.trim();
+      if (phone.isNotEmpty) {
+        await _sendWhatsAppMessage(phone, firstName, amount);
+      }
+      _phoneController.clear();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -179,7 +182,7 @@ class _BorrowPageState extends State<BorrowPage> {
     _saveBorrowData();
 
     // Play delete sound
-    await _playDeleteSound();
+    await SoundHelper.playDeleteSound();
 
     // Replace yellow/black warning with a simple green confirmation
     ScaffoldMessenger.of(context).showSnackBar(
@@ -346,7 +349,7 @@ class _BorrowPageState extends State<BorrowPage> {
       _saveBorrowData();
 
       // Play delete sound
-      await _playDeleteSound();
+      await SoundHelper.playDeleteSound();
 
       // Show confirmation with green background instead of yellow/black
       ScaffoldMessenger.of(context).showSnackBar(
@@ -647,6 +650,18 @@ class _BorrowPageState extends State<BorrowPage> {
           SizedBox(height: 10),
 
           TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: 'Phone Number (Optional)',
+              border: OutlineInputBorder(),
+              hintText: 'Enter phone with country code',
+              prefixText: '+',
+            ),
+          ),
+          SizedBox(height: 10),
+
+          TextField(
             controller: _descriptionController,
             maxLines: 3,
             autocorrect: false,
@@ -660,49 +675,7 @@ class _BorrowPageState extends State<BorrowPage> {
           SizedBox(height: 20),
 
           ElevatedButton.icon(
-            onPressed: () async {
-              String firstName = _firstNameController.text.trim();
-              double? amount = double.tryParse(_amountController.text.trim());
-              String description = _descriptionController.text.trim();
-
-              if (firstName.isNotEmpty &&
-                  amount != null &&
-                  _selectedPaymentMethod != 'Payment Method') {
-                setState(() {
-                  _borrowList.add({
-                    'firstName': firstName,
-                    'fullName': firstName,
-                    'firstNameLower': firstName.toLowerCase(),
-                    'amount': amount,
-                    'description': description,
-                    'paymentMethod': _selectedPaymentMethod,
-                    'time': DateTime.now(),
-                  });
-
-                  _totalBorrowAmount += amount;
-                  _firstNameController.clear();
-                  _amountController.clear();
-                  _descriptionController.clear();
-                  _selectedPaymentMethod = _paymentMethods[0];
-                });
-                await _saveBorrowData();
-
-                // Play sound after successful add
-                await _playAddSound();
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Added $firstName to Borrow list'),
-                    backgroundColor: Colors.green,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              } else if (_selectedPaymentMethod == 'Payment Method') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Please select a payment method')),
-                );
-              }
-            },
+            onPressed: _addBorrowItem,
             icon: Icon(Icons.add),
             label: Text('Add Borrow'),
             style: ElevatedButton.styleFrom(

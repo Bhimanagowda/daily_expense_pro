@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'group_detail_page.dart';
 import 'individual_share_bill.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'sound_helper.dart';
 
 // Add the missing constants
 const List<String> _categories = [
@@ -72,15 +73,7 @@ class _CostSplitPageState extends State<CostSplitPage> {
   String _selectedCategory = _categories[0];
   String _selectedPaymentMethod = _paymentMethods[0];
   String? _selectedGroupId;
-  final AudioPlayer _audioPlayer = AudioPlayer();
 
-  Future<void> _playDeleteSound() async {
-    try {
-      await _audioPlayer.play(AssetSource('mixkit-censorship-beep-1082.wav'));
-    } catch (e) {
-      print('Error playing delete sound: $e');
-    }
-  }
 
   @override
   void initState() {
@@ -296,7 +289,7 @@ class _CostSplitPageState extends State<CostSplitPage> {
               });
               _saveGroups();
               Navigator.pop(context);
-              await _playDeleteSound();
+              await SoundHelper.playDeleteSound();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Group "${group.name}" deleted'),
