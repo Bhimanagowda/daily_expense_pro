@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'sound_helper.dart';
 import 'cost_split_page.dart';
-import 'individual_share_bill.dart';
 import 'package:flutter/services.dart';
 
 const List<String> _categories = [
@@ -111,7 +109,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
     });
 
     widget.onGroupUpdated(widget.group);
-    
+
     // Play add sound
     await SoundHelper.playAddSound();
 
@@ -316,7 +314,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
               setState(() {
                 widget.group.members.add(name);
                 _selectedMembers = List.from(widget.group.members);
-                
+
                 // Exclude new member from all existing expenses
                 for (var expense in widget.group.expenses) {
                   expense['excludedMembers'] = expense['excludedMembers'] ?? [];

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'sound_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 

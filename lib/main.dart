@@ -17,6 +17,7 @@ import 'l10n/app_localizations.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'cost_split_page.dart';
 import 'sound_helper.dart';
+import 'filtered_data_page.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -456,6 +457,25 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     );
   }
 
+  void _showFilteredDataPage(DateTimeRange dateRange) {
+    // Filter items based on date range
+    List<Map<String, dynamic>> filteredItems = _items.where((item) {
+      DateTime itemDate = item['time'] as DateTime;
+      return itemDate.isAfter(dateRange.start) &&
+          itemDate.isBefore(dateRange.end.add(Duration(days: 1)));
+    }).toList();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FilteredDataPage(
+          items: filteredItems,
+          dateRange: dateRange,
+        ),
+      ),
+    );
+  }
+
   Future<DateTimeRange?> _askDateRange(BuildContext context) async {
     return showDialog<DateTimeRange>(
       context: context,
@@ -653,6 +673,26 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                     }
                   },
                   child: Text('OK'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedOption == 'Custom range' &&
+                        (customStartDate == null || customEndDate == null)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Please select both start and end dates',
+                          ),
+                        ),
+                      );
+                    } else {
+                      Navigator.pop(context);
+                      _showFilteredDataPage(
+                        DateTimeRange(start: startDate, end: endDate),
+                      );
+                    }
+                  },
+                  child: Text('Display Here'),
                 ),
               ],
             );
