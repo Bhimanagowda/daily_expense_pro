@@ -443,7 +443,7 @@ abstract class AppLocalizations {
   /// No description provided for @dailyExpenditure.
   ///
   /// In en, this message translates to:
-  /// **'Daily Expenditure-c'**
+  /// **'Daily Expenditure-C'**
   String get dailyExpenditure;
 
   /// No description provided for @enterFileName.
