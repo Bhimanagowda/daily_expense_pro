@@ -18,6 +18,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'cost_split_page.dart';
 import 'sound_helper.dart';
 import 'filtered_data_page.dart';
+import 'documents_page.dart';
 
 const List<String> _categories = [
   'Categories', // First item as a prompt
@@ -468,10 +469,8 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FilteredDataPage(
-          items: filteredItems,
-          dateRange: dateRange,
-        ),
+        builder: (context) =>
+            FilteredDataPage(items: filteredItems, dateRange: dateRange),
       ),
     );
   }
@@ -735,15 +734,31 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                       },
                     ),
                     IconButton(
-                      icon: Icon(Icons.note_alt, size: 36, color: Colors.blue),
-                      tooltip: 'Notes',
+                      icon: Icon(
+                        Icons.folder_open,
+                        size: 36,
+                        color: Colors.orange,
+                      ),
+                      tooltip: 'Documents',
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => NotesPage()),
+                          MaterialPageRoute(
+                            builder: (context) => DocumentsPage(),
+                          ),
                         );
                       },
                     ),
+                    // IconButton(
+                    //   icon: Icon(Icons.note_alt, size: 36, color: Colors.blue),
+                    //   tooltip: 'Notes',
+                    //   onPressed: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(builder: (context) => NotesPage()),
+                    //     );
+                    //   },
+                    // ),
                   ],
                 ),
               ],
@@ -1285,6 +1300,12 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                     ),
                   ),
                 );
+              } else if (value == 'notes') {
+                // Navigate to NotesPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => NotesPage()),
+                );
               } else if (value == 'settings') {
                 Navigator.push(
                   context,
@@ -1305,6 +1326,16 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                     Icon(Icons.person),
                     SizedBox(width: 8),
                     Text(AppLocalizations.of(context)!.profile),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'notes',
+                child: Row(
+                  children: [
+                    Icon(Icons.note_alt_outlined),
+                    SizedBox(width: 8),
+                    Text("Notes"), // Or use AppLocalizations.of(context)!.notes
                   ],
                 ),
               ),

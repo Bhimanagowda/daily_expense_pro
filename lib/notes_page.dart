@@ -172,78 +172,105 @@ class _NotesPageState extends State<NotesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Notes')),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _notes.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.note_alt_outlined,
-                    size: 80,
-                    color: Colors.grey[400],
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No notes yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Tap the + button to create a note',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                  ),
-                ],
+      appBar: AppBar(title: Text('Important Records')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: ElevatedButton.icon(
+              onPressed: _addNote,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Note'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 50), // Full width
               ),
-            )
-          : ListView.builder(
-              itemCount: _notes.length,
-              itemBuilder: (context, index) {
-                final note = _notes[index];
-                return Card(
-                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: ListTile(
-                    title: Text(
-                      note.title.isEmpty ? 'Untitled Note' : note.title,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _notes.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (note.content.isNotEmpty)
-                          Padding(
-                            padding: EdgeInsets.only(top: 4, bottom: 8),
-                            child: Text(
-                              note.content.length > 100
-                                  ? '${note.content.substring(0, 100)}...'
-                                  : note.content,
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          ),
+                        Icon(
+                          Icons.note_alt_outlined,
+                          size: 80,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
                         Text(
-                          _formatDateTime(note.createdAt),
+                          'No notes yet',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 18,
                             color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap the "Add Note" button to create one',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
                           ),
                         ),
                       ],
                     ),
-                    onTap: () => _editNote(index),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _deleteNote(index),
-                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _notes.length,
+                    itemBuilder: (context, index) {
+                      final note = _notes[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            note.title.isEmpty ? 'Untitled Note' : note.title,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (note.content.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 4,
+                                    bottom: 8,
+                                  ),
+                                  child: Text(
+                                    note.content.length > 100
+                                        ? '${note.content.substring(0, 100)}...'
+                                        : note.content,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              Text(
+                                _formatDateTime(note.createdAt),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                          onTap: () => _editNote(index),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteNote(index),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNote,
-        tooltip: 'Add Note',
-        child: Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }
@@ -349,8 +376,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
         appBar: AppBar(
           title: Text(widget.isNewNote ? 'New Note' : 'Edit Note'),
           actions: [
-            IconButton(
-              icon: Icon(Icons.check),
+            TextButton(
               onPressed: () {
                 // Create updated note
                 final updatedNote = Note(
@@ -365,6 +391,18 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
                 // Return the updated note to the previous screen
                 Navigator.pop(context, updatedNote);
               },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  'SAVE',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
