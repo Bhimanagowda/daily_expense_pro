@@ -121,8 +121,6 @@ class _LendPageState extends State<LendPage> {
   }
 
   void _addLendItem() async {
-    SoundHelper.playAddSound(); // Play sound first
-
     String firstName = _firstNameController.text.trim();
     double? amount = double.tryParse(_amountController.text.trim());
     String description = _descriptionController.text.trim();
@@ -155,6 +153,9 @@ class _LendPageState extends State<LendPage> {
         await _sendWhatsAppMessage(phone, firstName, amount);
       }
       _phoneController.clear();
+
+      // Play sound after successful addition
+      await SoundHelper.playAddSound();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -530,15 +531,15 @@ class _LendPageState extends State<LendPage> {
                                 );
                               },
                             ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                Navigator.pop(context);
-                                _showDeleteConfirmation(
-                                  _lendList.indexOf(transaction),
-                                );
-                              },
-                            ),
+                            // IconButton(
+                            //   icon: Icon(Icons.delete, color: Colors.red),
+                            //   onPressed: () {
+                            //     Navigator.pop(context);
+                            //     _showDeleteConfirmation(
+                            //       _lendList.indexOf(transaction),
+                            //     );
+                            //   },
+                            // ),
                           ],
                         ),
                       );

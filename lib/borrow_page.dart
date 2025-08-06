@@ -121,8 +121,6 @@ class _BorrowPageState extends State<BorrowPage> {
   }
 
   void _addBorrowItem() async {
-    SoundHelper.playAddSound(); // Play sound first
-
     String firstName = _firstNameController.text.trim();
     double? amount = double.tryParse(_amountController.text.trim());
     String description = _descriptionController.text.trim();
@@ -155,6 +153,9 @@ class _BorrowPageState extends State<BorrowPage> {
         await _sendWhatsAppMessage(phone, firstName, amount);
       }
       _phoneController.clear();
+
+      // Play sound after successful addition
+      await SoundHelper.playAddSound();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -528,15 +529,15 @@ class _BorrowPageState extends State<BorrowPage> {
                                 );
                               },
                             ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                Navigator.pop(context);
-                                _showDeleteConfirmation(
-                                  _borrowList.indexOf(transaction),
-                                );
-                              },
-                            ),
+                            // IconButton(
+                            //   icon: Icon(Icons.delete, color: Colors.red),
+                            //   onPressed: () {
+                            //     Navigator.pop(context);
+                            //     _showDeleteConfirmation(
+                            //       _borrowList.indexOf(transaction),
+                            //     );
+                            //   },
+                            // ),
                           ],
                         ),
                       );
