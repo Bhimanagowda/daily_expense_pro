@@ -625,7 +625,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                               text: settlement['from'],
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            TextSpan(text: ' pays '),
+                            TextSpan(text: ' received from '),
                             TextSpan(
                               text: settlement['to'],
                               style: TextStyle(fontWeight: FontWeight.bold),
