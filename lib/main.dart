@@ -716,7 +716,9 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
                   ),
                 ),
                 Row(
@@ -1335,7 +1337,7 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
                   children: [
                     Icon(Icons.note_alt_outlined),
                     SizedBox(width: 8),
-                    Text("Notes"), // Or use AppLocalizations.of(context)!.notes
+                    Text("Diary"),
                   ],
                 ),
               ),
