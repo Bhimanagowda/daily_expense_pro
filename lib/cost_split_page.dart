@@ -81,18 +81,32 @@ class _CostSplitPageState extends State<CostSplitPage> {
 
   Future<void> _loadGroups() async {
     final prefs = await SharedPreferences.getInstance();
-    final groupsJson = prefs.getString('cost_split_groups') ?? '[]';
-    final List<dynamic> groupsList = json.decode(groupsJson);
+    String? currentUserJson = prefs.getString('currentUser');
+    
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+      
+      final groupsJson = prefs.getString('cost_split_groups_$userId') ?? '[]';
+      final List<dynamic> groupsList = json.decode(groupsJson);
 
-    setState(() {
-      _groups = groupsList.map((g) => Group.fromJson(g)).toList();
-    });
+      setState(() {
+        _groups = groupsList.map((g) => Group.fromJson(g)).toList();
+      });
+    }
   }
 
   Future<void> _saveGroups() async {
     final prefs = await SharedPreferences.getInstance();
-    final groupsJson = json.encode(_groups.map((g) => g.toJson()).toList());
-    await prefs.setString('cost_split_groups', groupsJson);
+    String? currentUserJson = prefs.getString('currentUser');
+    
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+      
+      final groupsJson = json.encode(_groups.map((g) => g.toJson()).toList());
+      await prefs.setString('cost_split_groups_$userId', groupsJson);
+    }
   }
 
   void _createGroup() {

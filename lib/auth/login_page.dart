@@ -50,14 +50,25 @@ class _LoginPageState extends State<LoginPage> {
       bool userFound = false;
       Map<String, dynamic>? currentUser;
 
-      for (String userStr in usersJson) {
-        Map<String, dynamic> user = jsonDecode(userStr);
-        if ((user['username'] == usernameOrEmail ||
-                user['email'] == usernameOrEmail) &&
-            user['password'] == password) {
-          userFound = true;
-          currentUser = user;
-          break;
+      // Check for default test account for Google Play Store testers
+      if (usernameOrEmail == 'dailytest@gmail.com' && password == 'Dailytest@123') {
+        userFound = true;
+        currentUser = {
+          'username': 'dailytest@gmail.com',
+          'email': 'dailytest@gmail.com',
+          'fullName': 'Test User',
+        };
+      } else {
+        // Check registered users
+        for (String userStr in usersJson) {
+          Map<String, dynamic> user = jsonDecode(userStr);
+          if ((user['username'] == usernameOrEmail ||
+                  user['email'] == usernameOrEmail) &&
+              user['password'] == password) {
+            userFound = true;
+            currentUser = user;
+            break;
+          }
         }
       }
 

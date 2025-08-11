@@ -1,4 +1,4 @@
-package com.example.demo_flutter_pro
+package com.bhimanagowda.dailyexpense
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -6,6 +6,8 @@ import 'dart:io';
 import 'package:share_plus/share_plus.dart';
 
 class DocumentsPage extends StatefulWidget {
+  const DocumentsPage({super.key});
+
   @override
   _DocumentsPageState createState() => _DocumentsPageState();
 }
@@ -13,7 +15,11 @@ class DocumentsPage extends StatefulWidget {
 class _DocumentsPageState extends State<DocumentsPage> {
   final List<Map<String, dynamic>> _documents = [
     {'name': 'Aadhar Card', 'icon': Icons.credit_card, 'color': Colors.blue},
-    {'name': 'PAN Card', 'icon': Icons.account_balance_wallet, 'color': Colors.green},
+    {
+      'name': 'PAN Card',
+      'icon': Icons.account_balance_wallet,
+      'color': Colors.green,
+    },
     {'name': 'Driver License', 'icon': Icons.drive_eta, 'color': Colors.orange},
     {'name': 'Voter ID', 'icon': Icons.how_to_vote, 'color': Colors.purple},
     {'name': 'Photo', 'icon': Icons.photo, 'color': Colors.pink},
@@ -30,29 +36,41 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
   Future<void> _loadDocuments() async {
     final prefs = await SharedPreferences.getInstance();
-    String? imagesJson = prefs.getString('document_images');
-    String? customDocsJson = prefs.getString('custom_documents');
+    String? currentUserJson = prefs.getString('currentUser');
+    
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+      
+      String? imagesJson = prefs.getString('document_images_$userId');
+      String? customDocsJson = prefs.getString('custom_documents_$userId');
 
-    if (imagesJson != null) {
-      try {
-        Map<String, dynamic> imagesMap = json.decode(imagesJson);
-        _documentImages = imagesMap.map((key, value) => 
-          MapEntry(key, List<String>.from(value)));
-      } catch (e) {
-        _documentImages = {};
+      if (imagesJson != null) {
+        try {
+          Map<String, dynamic> imagesMap = json.decode(imagesJson);
+          _documentImages = imagesMap.map(
+            (key, value) => MapEntry(key, List<String>.from(value)),
+          );
+        } catch (e) {
+          _documentImages = {};
+        }
       }
-    }
 
-    if (customDocsJson != null) {
-      try {
-        List<dynamic> customList = json.decode(customDocsJson);
-        _customDocuments = customList.map<Map<String, Object>>((item) => {
-          'name': item['name'].toString(),
-          'icon': Icons.description,
-          'color': Colors.teal,
-        }).toList();
-      } catch (e) {
-        _customDocuments = [];
+      if (customDocsJson != null) {
+        try {
+          List<dynamic> customList = json.decode(customDocsJson);
+          _customDocuments = customList
+              .map<Map<String, Object>>(
+                (item) => {
+                  'name': item['name'].toString(),
+                  'icon': Icons.description,
+                  'color': Colors.teal,
+                },
+              )
+              .toList();
+        } catch (e) {
+          _customDocuments = [];
+        }
       }
     }
     setState(() {});
@@ -60,12 +78,22 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
   Future<void> _saveDocuments() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('document_images', json.encode(_documentImages));
+    String? currentUserJson = prefs.getString('currentUser');
     
-    List<Map<String, String>> serializableCustomDocs = _customDocuments.map((doc) => {
-      'name': doc['name'].toString(),
-    }).toList();
-    await prefs.setString('custom_documents', json.encode(serializableCustomDocs));
+    if (currentUserJson != null) {
+      Map<String, dynamic> currentUser = jsonDecode(currentUserJson);
+      String userId = currentUser['username'];
+      
+      await prefs.setString('document_images_$userId', json.encode(_documentImages));
+
+      List<Map<String, String>> serializableCustomDocs = _customDocuments
+          .map((doc) => {'name': doc['name'].toString()})
+          .toList();
+      await prefs.setString(
+        'custom_documents_$userId',
+        json.encode(serializableCustomDocs),
+      );
+    }
   }
 
   void _addCustomDocument() async {
@@ -102,7 +130,7 @@ class _DocumentsPageState extends State<DocumentsPage> {
     if (result != null && result.isNotEmpty) {
       print('Adding custom document: $result');
       print('Before add - Custom docs count: ${_customDocuments.length}');
-      
+
       setState(() {
         _customDocuments.add(<String, Object>{
           'name': result,
@@ -110,10 +138,12 @@ class _DocumentsPageState extends State<DocumentsPage> {
           'color': Colors.teal,
         });
       });
-      
+
       print('After add - Custom docs count: ${_customDocuments.length}');
-      print('Total items in grid: ${_documents.length + _customDocuments.length}');
-      
+      print(
+        'Total items in grid: ${_documents.length + _customDocuments.length}',
+      );
+
       await _saveDocuments();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -293,17 +323,21 @@ class _DocumentsPageState extends State<DocumentsPage> {
             mainAxisSpacing: 16,
             childAspectRatio: 1.2,
           ),
-          itemCount: _documents.length + (_documents.length % 2 == 1 ? 1 : 0) + (_customDocuments.isNotEmpty ? _customDocuments.length + 2 : 0),
+          itemCount:
+              _documents.length +
+              (_documents.length % 2 == 1 ? 1 : 0) +
+              (_customDocuments.isNotEmpty ? _customDocuments.length + 2 : 0),
           itemBuilder: (context, index) {
             // Add empty space if default documents count is odd
             if (index == _documents.length && _documents.length % 2 == 1) {
               return Container();
             }
-            
+
             // Show custom documents header spanning 2 columns
-            int headerIndex = _documents.length + (_documents.length % 2 == 1 ? 1 : 0);
+            int headerIndex =
+                _documents.length + (_documents.length % 2 == 1 ? 1 : 0);
             int adjustment = (_documents.length % 2 == 1 ? 1 : 0) + 2;
-            
+
             if (index == headerIndex && _customDocuments.isNotEmpty) {
               return Container(
                 padding: EdgeInsets.symmetric(vertical: 16),
@@ -314,7 +348,11 @@ class _DocumentsPageState extends State<DocumentsPage> {
                     Flexible(
                       child: Text(
                         'Custom Documents (${_customDocuments.length})',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.teal),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -322,12 +360,12 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 ),
               );
             }
-            
+
             // Empty space for second column of header
             if (index == headerIndex + 1 && _customDocuments.isNotEmpty) {
               return Container();
             }
-            
+
             Map<String, dynamic> doc;
             if (index < _documents.length) {
               doc = _documents[index];
@@ -337,22 +375,37 @@ class _DocumentsPageState extends State<DocumentsPage> {
               doc = Map<String, dynamic>.from(_customDocuments[customIndex]);
             }
             int imageCount = _documentImages[doc['name']]?.length ?? 0;
-            
+
             return Card(
               elevation: 4,
               child: InkWell(
-                onTap: () => _openDocumentDetail(doc['name'] as String, doc['icon'] as IconData, doc['color'] as Color),
-                onLongPress: index > headerIndex + 1 ? () => _showCustomDocumentOptions(index - _documents.length - adjustment) : null,
+                onTap: () => _openDocumentDetail(
+                  doc['name'] as String,
+                  doc['icon'] as IconData,
+                  doc['color'] as Color,
+                ),
+                onLongPress: index > headerIndex + 1
+                    ? () => _showCustomDocumentOptions(
+                        index - _documents.length - adjustment,
+                      )
+                    : null,
                 child: Padding(
                   padding: EdgeInsets.all(8),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(doc['icon'] as IconData, size: 32, color: doc['color'] as Color),
+                      Icon(
+                        doc['icon'] as IconData,
+                        size: 32,
+                        color: doc['color'] as Color,
+                      ),
                       SizedBox(height: 8),
                       Text(
                         doc['name'] as String,
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -381,7 +434,8 @@ class DocumentDetailPage extends StatefulWidget {
   final List<String> images;
   final Function(List<String>) onImagesUpdated;
 
-  DocumentDetailPage({
+  const DocumentDetailPage({
+    super.key,
     required this.documentName,
     required this.icon,
     required this.color,
@@ -404,7 +458,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   }
 
   Future<void> _addImage() async {
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -418,7 +471,9 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+              final XFile? image = await _picker.pickImage(
+                source: ImageSource.gallery,
+              );
               if (image != null) {
                 setState(() {
                   _images.add(image.path);
@@ -431,7 +486,9 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+              final XFile? image = await _picker.pickImage(
+                source: ImageSource.camera,
+              );
               if (image != null) {
                 setState(() {
                   _images.add(image.path);
@@ -517,7 +574,10 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                         children: [
                           Text(
                             widget.documentName,
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Text(
                             '${_images.length} images',
@@ -537,7 +597,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.photo_library, size: 64, color: Colors.grey),
+                          Icon(
+                            Icons.photo_library,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
                           SizedBox(height: 16),
                           Text(
                             'No images added yet',
@@ -582,12 +646,15 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                                   backgroundColor: Colors.red,
                                   radius: 16,
                                   child: IconButton(
-                                    icon: Icon(Icons.delete, size: 16, color: Colors.white),
+                                    icon: Icon(
+                                      Icons.delete,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
                                     onPressed: () => _deleteImage(index),
                                   ),
                                 ),
                               ),
-
                             ],
                           ),
                         );
@@ -605,7 +672,11 @@ class FullScreenImagePage extends StatelessWidget {
   final String imagePath;
   final String documentName;
 
-  FullScreenImagePage({required this.imagePath, required this.documentName});
+  const FullScreenImagePage({
+    super.key,
+    required this.imagePath,
+    required this.documentName,
+  });
 
   Future<void> _shareImage() async {
     await Share.shareXFiles([XFile(imagePath)], text: 'Sharing $documentName');
@@ -617,12 +688,13 @@ class FullScreenImagePage extends StatelessWidget {
       if (!await directory.exists()) {
         await directory.create(recursive: true);
       }
-      
-      final fileName = '${documentName}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      final fileName =
+          '${documentName}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final newPath = '${directory.path}/$fileName';
-      
+
       await File(imagePath).copy(newPath);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Image downloaded to Downloads folder'),
@@ -662,10 +734,7 @@ class FullScreenImagePage extends StatelessWidget {
       ),
       body: Center(
         child: InteractiveViewer(
-          child: Image.file(
-            File(imagePath),
-            fit: BoxFit.contain,
-          ),
+          child: Image.file(File(imagePath), fit: BoxFit.contain),
         ),
       ),
     );
