@@ -149,20 +149,6 @@ class _SettingsPageState extends State<SettingsPage> {
                               },
                               activeColor: Colors.blue,
                             ),
-
-                            // Kannada Option
-                            RadioListTile<String>(
-                              title: Text(localizations.kannada),
-                              subtitle: Text('ಕನ್ನಡ'),
-                              value: 'kn',
-                              groupValue: _selectedLanguage,
-                              onChanged: (String? value) {
-                                if (value != null) {
-                                  _saveLanguagePreference(value);
-                                }
-                              },
-                              activeColor: Colors.blue,
-                            ),
                           ],
                         ),
                       ),

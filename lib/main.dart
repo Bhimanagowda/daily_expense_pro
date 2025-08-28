@@ -342,6 +342,23 @@ class _ExpenditureScreenState extends State<ExpenditureScreen> {
 
       // Play sound after successful add
       await SoundHelper.playAddSound();
+      
+      // Show popup message
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Success'),
+          content: Text('New Expense is added, and Display in items details page'),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
     } else if (_selectedCategory == 'Categories') {
       ScaffoldMessenger.of(
         context,

@@ -388,8 +388,23 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
                       : widget.note.createdAt,
                 );
 
-                // Return the updated note to the previous screen
-                Navigator.pop(context, updatedNote);
+                // Show popup message
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Success'),
+                    content: Text(widget.isNewNote ? 'New note added successfully!' : 'Note updated successfully!'),
+                    actions: [
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Close popup
+                          Navigator.pop(context, updatedNote); // Return to notes list
+                        },
+                        child: Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
               },
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
